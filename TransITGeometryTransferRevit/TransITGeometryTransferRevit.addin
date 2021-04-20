@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+ <AddIn Type="Command">
+       <Name>TransITGeometryTransferRevit</Name>
+       <FullClassName>TransITGeometryTransferRevit.Main</FullClassName>
+       <Text>TransIT Geometry Transfer Revit</Text>
+       <Description>Development command for TransITGeometryTransferRevit</Description>
+       <VisibilityMode>AlwaysVisible</VisibilityMode>
+       <Assembly>Y:\TransIT-GeometryTransfer-Revit\TransITGeometryTransferRevit\TransITGeometryTransferRevit\bin\Debug\TransITGeometryTransferRevit.dll</Assembly>
+       <AddInId>502fe383-2648-4e98-adf8-5e6047f9dc34</AddInId>
+    <VendorId>TODO</VendorId>
+    <VendorDescription>TODO</VendorDescription>
+ </AddIn>
+</RevitAddIns>
