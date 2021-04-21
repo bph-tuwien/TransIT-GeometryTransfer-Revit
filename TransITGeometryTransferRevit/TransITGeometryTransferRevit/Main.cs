@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using System;
 using System.Collections.Generic;
 
 namespace TransITGeometryTransferRevit
@@ -11,6 +12,125 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            // https://thebuildingcoder.typepad.com/blog/2018/01/create-swept-blend-in-c.html
+
+            Document document = commandData.Application.ActiveUIDocument.Document;// replace var with Document (statically-typed)
+
+            //ElementId level_id = new ElementId(0); // replace var with ElementId, I assume "1526" is the correct level id in your local project
+            //ElementId level_id = ViewLevel(commandData);
+            //ElementId wallTypeId = document.GetDefaultElementTypeId(ElementTypeGroup.WallType);// replace var with Element Id (statically-typed)
+
+
+            
+
+
+            Transaction transaction = new Transaction(document);// no need to to use "Using", Autodesk disposes of all the methods and data in Execute method.
+            {
+                transaction.Start("create tunnel");
+
+
+                Autodesk.Revit.DB.Category directShapeCategory = document.Settings.Categories.get_Item(Autodesk.Revit.DB.BuiltInCategory.OST_GenericModel);
+
+                //if (directShapeCategory == null)
+                //    return nullptr;
+
+                Autodesk.Revit.DB.DirectShape directShape
+                  = Autodesk.Revit.DB.DirectShape.CreateElement(
+                    document, directShapeCategory.Id);
+
+
+                // Create a path curve
+
+                List<XYZ> controlPoints = new List<XYZ>();
+                controlPoints.Add(new XYZ(0, 0, 0));
+                controlPoints.Add(new XYZ(0, 0, 10));
+                controlPoints.Add(new XYZ(0, 10, 10));
+                controlPoints.Add(new XYZ(0, 10, 20));
+                List<double> weights = new List<double>();
+                weights.Add(1.0);
+                weights.Add(1.0);
+                weights.Add(1.0);
+                weights.Add(1.0);
+                Curve pathCurve = NurbSpline.CreateCurve(controlPoints, weights);
+
+
+                // Create a bottom profile
+
+                List<XYZ> bottomProfilePoints = new List <XYZ>();
+                bottomProfilePoints.Add(new XYZ(5, 5, 0));
+                bottomProfilePoints.Add(new XYZ(-5, 5, 0));
+                bottomProfilePoints.Add(new XYZ(-5, -5, 0));
+                bottomProfilePoints.Add(new XYZ(5, -5, 0));
+
+                CurveLoop bottomProfile = new CurveLoop();
+
+                bottomProfile.Append(Line.CreateBound(
+                  bottomProfilePoints[0], bottomProfilePoints[1]));
+                bottomProfile.Append(Line.CreateBound(
+                  bottomProfilePoints[1], bottomProfilePoints[2]));
+                bottomProfile.Append(Line.CreateBound(
+                  bottomProfilePoints[2], bottomProfilePoints[3]));
+                bottomProfile.Append(Line.CreateBound(
+                  bottomProfilePoints[3], bottomProfilePoints[0]));
+
+
+                // Create a top profile
+
+                List<XYZ> topProfilePoints = new List<XYZ>();
+                topProfilePoints.Add(new XYZ(2, 10 + 2, 20));
+                topProfilePoints.Add(new XYZ(-2, 10 + 2, 20));
+                topProfilePoints.Add(new XYZ(-2, 10 - 2, 20));
+                topProfilePoints.Add(new XYZ(2, 10 - 2, 20));
+
+                CurveLoop topProfile = new CurveLoop();
+
+                topProfile.Append(Line.CreateBound(
+                  topProfilePoints[0], topProfilePoints[1]));
+                topProfile.Append(Line.CreateBound(
+                  topProfilePoints[1], topProfilePoints[2]));
+                topProfile.Append(Line.CreateBound(
+                  topProfilePoints[2], topProfilePoints[3]));
+                topProfile.Append(Line.CreateBound(
+                  topProfilePoints[3], topProfilePoints[0]));
+
+                List<CurveLoop> profiles = new List<CurveLoop>();
+
+
+                // Add above profiles
+
+                profiles.Add(bottomProfile);
+                profiles.Add(topProfile);
+
+                // which value to be set exactly? He tried 0 and 1.
+
+                List<double> pathParams = new List<double>();
+
+                pathParams.Add(pathCurve.GetEndParameter(0));
+                pathParams.Add(pathCurve.GetEndParameter(1));
+
+                // Create a swept blend geometry.
+
+                Solid solid = GeometryCreationUtilities.CreateSweptBlendGeometry(pathCurve, pathParams, profiles, null);
+
+                List <GeometryObject> gs = new List<GeometryObject>();
+                gs.Add(solid);
+                directShape.AppendShape(gs);
+
+
+
+
+
+                transaction.Commit();
+            }
+            return Result.Succeeded;
+
+
+
+        }
+
+        [Obsolete("Testing out how Revit transactions work")]
+        public Result ExecuteWallTest(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Document document = commandData.Application.ActiveUIDocument.Document;// replace var with Document (statically-typed)
 
