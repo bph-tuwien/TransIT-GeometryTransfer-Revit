@@ -124,8 +124,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Ifc\GeometryResource\IfcIndexedPolyCurveExtension.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UserInteractions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -4,6 +4,13 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using TransITGeometryTransferRevit.Ifc.GeometryResource;
+using Xbim.Ifc;
+using Xbim.Ifc4.GeometryResource;
+using Xbim.Ifc4.Kernel;
+using Xbim.Ifc4.RepresentationResource;
+using Xbim.Ifc4.SharedBldgElements;
 
 namespace TransITGeometryTransferRevit
 {
@@ -12,6 +19,115 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            Document document = commandData.Application.ActiveUIDocument.Document;
+
+
+            Transaction transaction = new Transaction(document);
+            {
+                transaction.Start("create tunnel");
+
+
+                var ifcPath = UserInteractions.PromptIfcFileOpenDialog();
+
+                FileInfo ifcFi = new FileInfo(ifcPath);
+
+                using (var model = IfcStore.Open(ifcFi.FullName))
+                {
+                    using (var txn = model.BeginTransaction("Simple transaction"))
+                    {
+
+
+                        var objects = model.Instances.OfType<IfcBuildingElementProxy>();
+
+                        foreach (IfcBuildingElementProxy obj in objects)
+                        {
+                            ;
+
+                            var representations = obj.Representation.Representations;
+
+                            IfcRepresentation axisRepresentation = null;
+                            IfcRepresentation profileRepresentation = null;
+
+                            foreach (var representation in representations)
+                            {
+                                if (representation.RepresentationIdentifier == "Axis")
+                                {
+                                    axisRepresentation = representation;
+                                }
+
+                                if (representation.RepresentationIdentifier == "Profile")
+                                {
+                                    profileRepresentation = representation;
+                                }
+                            }
+
+                            IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                            List<CurveLoop> revitProfiles = new List<CurveLoop>();
+
+                            foreach (var ifcProfileItem in profileRepresentation.Items)
+                            {
+                                var ifcProfileCurve = ifcProfileItem as IfcIndexedPolyCurve;
+                                var revitProfile = ifcProfileCurve.ToCurveLoop();
+                                revitProfiles.Add(revitProfile);
+                            }
+
+
+
+                            var revitTunnelLine = ifcTunnelLine.ToCurve();
+
+
+                            List<double> pathParams = new List<double>();
+
+                            // TODO: FIX this
+                            pathParams.Add(revitTunnelLine.GetEndParameter(0));
+                            pathParams.Add((revitTunnelLine.GetEndParameter(1) - revitTunnelLine.GetEndParameter(0))/2f);
+                            pathParams.Add(revitTunnelLine.GetEndParameter(1));
+
+                            // Create a swept blend geometry.
+
+
+                            Autodesk.Revit.DB.Category directShapeCategory = document.Settings.Categories.get_Item(Autodesk.Revit.DB.BuiltInCategory.OST_GenericModel);
+
+                            //if (directShapeCategory == null)
+                            //    return nullptr;
+
+                            Autodesk.Revit.DB.DirectShape directShape
+                              = Autodesk.Revit.DB.DirectShape.CreateElement(
+                                document, directShapeCategory.Id);
+
+
+                            Solid solid = GeometryCreationUtilities.CreateSweptBlendGeometry(revitTunnelLine, pathParams, revitProfiles, null);
+
+
+                            List<GeometryObject> gs = new List<GeometryObject>();
+                            gs.Add(solid);
+                            directShape.AppendShape(gs);
+
+
+                        }
+
+
+
+
+                    }
+                }
+
+
+
+
+
+                transaction.Commit();
+            }
+            return Result.Succeeded;
+
+
+
+        }
+
+        [Obsolete("Testing out how Revit loft generation works")]
+        public Result ExecuteLoftTest(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             // https://thebuildingcoder.typepad.com/blog/2018/01/create-swept-blend-in-c.html
 
@@ -22,7 +138,7 @@ namespace TransITGeometryTransferRevit
             //ElementId wallTypeId = document.GetDefaultElementTypeId(ElementTypeGroup.WallType);// replace var with Element Id (statically-typed)
 
 
-            
+
 
 
             Transaction transaction = new Transaction(document);// no need to to use "Using", Autodesk disposes of all the methods and data in Execute method.
@@ -57,7 +173,7 @@ namespace TransITGeometryTransferRevit
 
                 // Create a bottom profile
 
-                List<XYZ> bottomProfilePoints = new List <XYZ>();
+                List<XYZ> bottomProfilePoints = new List<XYZ>();
                 bottomProfilePoints.Add(new XYZ(5, 5, 0));
                 bottomProfilePoints.Add(new XYZ(-5, 5, 0));
                 bottomProfilePoints.Add(new XYZ(-5, -5, 0));
@@ -113,7 +229,7 @@ namespace TransITGeometryTransferRevit
 
                 Solid solid = GeometryCreationUtilities.CreateSweptBlendGeometry(pathCurve, pathParams, profiles, null);
 
-                List <GeometryObject> gs = new List<GeometryObject>();
+                List<GeometryObject> gs = new List<GeometryObject>();
                 gs.Add(solid);
                 directShape.AppendShape(gs);
 
@@ -128,6 +244,8 @@ namespace TransITGeometryTransferRevit
 
 
         }
+
+
 
         [Obsolete("Testing out how Revit transactions work")]
         public Result ExecuteWallTest(ExternalCommandData commandData, ref string message, ElementSet elements)
