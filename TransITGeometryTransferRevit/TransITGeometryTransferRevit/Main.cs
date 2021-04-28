@@ -1,16 +1,18 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using TransITGeometryTransferRevit.Ifc.GeometryResource;
+
+using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Kernel;
 using Xbim.Ifc4.RepresentationResource;
-using Xbim.Ifc4.SharedBldgElements;
+
+using TransITGeometryTransferRevit.Ifc.GeometryResource;
+
 
 namespace TransITGeometryTransferRevit
 {
@@ -18,34 +20,39 @@ namespace TransITGeometryTransferRevit
     [Regeneration(RegenerationOption.Manual)]
     public class Main : IExternalCommand
     {
+
+        /// <summary>
+        /// The entry point of the plugin. 
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="message"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Document document = commandData.Application.ActiveUIDocument.Document;
 
 
-            Transaction transaction = new Transaction(document);
+            Transaction revitTransaction = new Transaction(document);
             {
-                transaction.Start("create tunnel");
+                revitTransaction.Start("Importing 3d tunnel");
 
 
-                var ifcPath = UserInteractions.PromptIfcFileOpenDialog();
+                var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
 
-                FileInfo ifcFi = new FileInfo(ifcPath);
+                FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
 
-                using (var model = IfcStore.Open(ifcFi.FullName))
+                using (var model = IfcStore.Open(ifcFileInfo.FullName))
                 {
-                    using (var txn = model.BeginTransaction("Simple transaction"))
+                    using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
                     {
-
 
                         var objects = model.Instances.OfType<IfcProduct>();
 
                         foreach (var obj in objects)
                         {
-                            ;
 
-
-                            // TODO: Refactor this
+                            // TODO: Refactor this, should be a better way of finding the tunnel
                             if (obj.Representation == null || obj.Representation.Representations.Count != 3)
                             {
                                 continue;
@@ -81,57 +88,34 @@ namespace TransITGeometryTransferRevit
                                 revitProfiles.Add(revitProfile);
                             }
 
-
-
                             var revitTunnelLine = ifcTunnelLine.ToCurve();
-
 
                             List<double> pathParams = new List<double>();
 
-                            // TODO: FIX this
+                            // TODO: FIX THIS - Profile placement is NOT implemented! Arbitrary values
                             pathParams.Add(revitTunnelLine.GetEndParameter(0));
-                            //pathParams.Add((revitTunnelLine.GetEndParameter(1) - revitTunnelLine.GetEndParameter(0))/2f);
                             pathParams.Add(revitTunnelLine.GetEndParameter(1));
 
-                            // Create a swept blend geometry.
 
+                            Category directShapeCategory = document.Settings.Categories.get_Item(BuiltInCategory.OST_GenericModel);
 
-                            Autodesk.Revit.DB.Category directShapeCategory = document.Settings.Categories.get_Item(Autodesk.Revit.DB.BuiltInCategory.OST_GenericModel);
+                            DirectShape directShape = DirectShape.CreateElement(document, directShapeCategory.Id);
 
-                            //if (directShapeCategory == null)
-                            //    return nullptr;
-
-                            Autodesk.Revit.DB.DirectShape directShape
-                              = Autodesk.Revit.DB.DirectShape.CreateElement(
-                                document, directShapeCategory.Id);
-
-
-                            Solid solid = GeometryCreationUtilities.CreateSweptBlendGeometry(revitTunnelLine, pathParams, revitProfiles, null);
-
+                            Solid solid = GeometryCreationUtilities.CreateSweptBlendGeometry(revitTunnelLine, pathParams,
+                                                                                             revitProfiles, null);
 
                             List<GeometryObject> gs = new List<GeometryObject>();
                             gs.Add(solid);
                             directShape.AppendShape(gs);
 
-
                         }
-
-
-
-
                     }
                 }
 
-
-
-
-
-                transaction.Commit();
+                revitTransaction.Commit();
             }
+
             return Result.Succeeded;
-
-
-
         }
 
         [Obsolete("Testing out how Revit loft generation works")]
@@ -298,7 +282,7 @@ namespace TransITGeometryTransferRevit
 
         }
 
-
+        [Obsolete("Testing out how Revit transactions work")]
         public ElementId ViewLevel(ExternalCommandData commandData)
         {
             Document doc = commandData.Application.ActiveUIDocument.Document;
