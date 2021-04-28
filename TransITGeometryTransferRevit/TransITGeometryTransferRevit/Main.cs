@@ -38,13 +38,21 @@ namespace TransITGeometryTransferRevit
                     {
 
 
-                        var objects = model.Instances.OfType<IfcBuildingElementProxy>();
+                        var objects = model.Instances.OfType<IfcProduct>();
 
-                        foreach (IfcBuildingElementProxy obj in objects)
+                        foreach (var obj in objects)
                         {
                             ;
 
+
+                            // TODO: Refactor this
+                            if (obj.Representation == null || obj.Representation.Representations.Count != 3)
+                            {
+                                continue;
+                            }
+
                             var representations = obj.Representation.Representations;
+
 
                             IfcRepresentation axisRepresentation = null;
                             IfcRepresentation profileRepresentation = null;
@@ -82,7 +90,7 @@ namespace TransITGeometryTransferRevit
 
                             // TODO: FIX this
                             pathParams.Add(revitTunnelLine.GetEndParameter(0));
-                            pathParams.Add((revitTunnelLine.GetEndParameter(1) - revitTunnelLine.GetEndParameter(0))/2f);
+                            //pathParams.Add((revitTunnelLine.GetEndParameter(1) - revitTunnelLine.GetEndParameter(0))/2f);
                             pathParams.Add(revitTunnelLine.GetEndParameter(1));
 
                             // Create a swept blend geometry.
