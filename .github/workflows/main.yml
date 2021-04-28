@@ -16,9 +16,9 @@ jobs:
     - name: docfx-action
       uses: nikeee/docfx-action@v0.1.0
       with:
-        args: TransITGeometryTransfer-Revit/TransITGeometryTransferRevit/docfx.json -t statictoc
+        args: TransITGeometryTransferRevit/TransITGeometryTransferRevit/docfx.json -t statictoc
 
     - uses: actions/upload-artifact@v2
       with:
         name: api-documentation-${{ github.sha }}
-        path: TransITGeometryTransfer-Revit/TransITGeometryTransferRevit/_site
+        path: TransITGeometryTransferRevit/TransITGeometryTransferRevit/_site
