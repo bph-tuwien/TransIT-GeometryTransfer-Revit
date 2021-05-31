@@ -168,8 +168,7 @@ namespace TransITGeometryTransferRevit
         /// the returned CurveArray in feet.
         /// </summary>
         CurveArray CreateProfile(
-          List<XYZ> pts,
-          CreationApplication creapp)
+          List<XYZ> pts)
         {
             CurveArray profile = new CurveArray();
 
@@ -210,7 +209,7 @@ namespace TransITGeometryTransferRevit
 
             CurveArrArray curveArrArray = new CurveArrArray();
 
-            curveArrArray.Append(CreateProfile(pts, creapp));
+            curveArrArray.Append(CreateProfile(pts));
 
             double extrusionHeight = MmToFoot(thickness);
 
@@ -263,6 +262,60 @@ namespace TransITGeometryTransferRevit
             return symbol;
         }
 
+        private string CreateTunnelProfileFamily(ExternalCommandData commandData)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+            if (null == doc)
+            {
+                throw new ArgumentNullException("Current document is null");
+            }
+
+            string templateFileName = Path.Combine(_path, _family_template_name + _family_template_ext);
+
+            Document fdoc = app.NewFamilyDocument(templateFileName);
+
+            if (null == fdoc)
+            {
+                throw new ArgumentNullException("Cannot create family document");
+            }
+
+
+            Transaction revitTransaction = new Transaction(fdoc, "Creating tunnel profile family");
+            {
+                revitTransaction.Start();
+
+                //CreateExtrusion(fdoc, _countour, _thicknessMm);
+
+                //var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
+                //var revitProfile = ifcProfileCurve.ToCurve();
+
+
+                // https://forums.autodesk.com/t5/revit-api-forum/3d-model-line/td-p/5961937
+                var profile = CreateProfile(_countour);
+
+                var plane =  Plane.CreateByThreePoints(_countour[0], _countour[1], _countour[2]);
+                SketchPlane skp = SketchPlane.Create(fdoc, plane);
+                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(profile, skp);
+
+                revitTransaction.Commit();
+            }
+
+            string filename = Path.Combine(Path.GetTempPath(), _family_name + _rfa_ext);
+
+            SaveAsOptions opt = new SaveAsOptions();
+            opt.OverwriteExistingFile = true;
+
+            fdoc.SaveAs(filename, opt);
+
+            fdoc.Close(false);
+
+            return filename;
+        }
+
 
 
 
@@ -282,58 +335,13 @@ namespace TransITGeometryTransferRevit
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            if (null == doc)
-            {
-                message = "Please run this command in an open document.";
-                return Result.Failed;
-            }
-
-
-            #region Create a new structural stiffener family
-
-            string templateFileName = Path.Combine(_path, _family_template_name + _family_template_ext);
-
-            Document fdoc = app.NewFamilyDocument(templateFileName);
-
-            if (null == fdoc)
-            {
-                message = "Cannot create family document.";
-                return Result.Failed;
-            }
-
-
-            Transaction revitTransaction = new Transaction(fdoc, "Creating tunnel profile family");
-            {
-                revitTransaction.Start();
-
-                CreateExtrusion(fdoc, _countour, _thicknessMm);
-
-                revitTransaction.Commit();
-            }
-
-            // save our new family background document
-            // and reopen it in the Revit user interface:
-
-            string filename = Path.Combine(Path.GetTempPath(), _family_name + _rfa_ext);
-
-            SaveAsOptions opt = new SaveAsOptions();
-            opt.OverwriteExistingFile = true;
-
-            fdoc.SaveAs(filename, opt);
-
-            fdoc.Close(false);
-
-            #endregion // Create a new structural stiffener family
-
-
-
-
+            var filename = CreateTunnelProfileFamily(commandData);
 
 
 
             #region Insert stiffener family instance
 
-            revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
+            var revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
             {
                 revitTransaction.Start();
 
@@ -355,9 +363,6 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Commit();
             }
 
-
-
-            
 
 
             #endregion // Insert stiffener family instance
