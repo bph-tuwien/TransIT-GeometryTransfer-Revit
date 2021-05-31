@@ -221,6 +221,50 @@ namespace TransITGeometryTransferRevit
 
 
 
+        private Family LoadFamilyIfNotLoaded(Document doc, string filename)
+        {
+            // before loading the family, it needs to be checked wheter it is already loaded or not
+
+            Family family = null;
+
+            FilteredElementCollector a = new FilteredElementCollector(doc).OfClass(typeof(Family));
+
+            int n = a.Count<Element>(e => e.Name.Equals(_family_name));
+
+            if (0 < n)
+            {
+                family = a.First<Element>(e => e.Name.Equals(_family_name)) as Family;
+            }
+            else
+            {
+                doc.LoadFamily(filename, out family);
+            }
+
+            return family;
+        }
+
+        private FamilySymbol GetFirstFamilySymbol(Family family)
+        {
+            FamilySymbol symbol = null;
+
+            ISet<ElementId> familySymbolIds = family.GetFamilySymbolIds();
+
+            // Get family symbols which is contained in this family
+            foreach (ElementId id in familySymbolIds)
+            {
+                FamilySymbol familySymbol = family.Document.GetElement(id) as FamilySymbol;
+
+                symbol = familySymbol;
+
+                // TODO: Debug this context
+                break;
+            }
+
+            return symbol;
+        }
+
+
+
 
         /// <summary>
         /// Testing family scripting and creation
@@ -244,13 +288,12 @@ namespace TransITGeometryTransferRevit
                 return Result.Failed;
             }
 
+
             #region Create a new structural stiffener family
 
-            string templateFileName = Path.Combine(_path,
-              _family_template_name + _family_template_ext);
+            string templateFileName = Path.Combine(_path, _family_template_name + _family_template_ext);
 
-            Document fdoc = app.NewFamilyDocument(
-              templateFileName);
+            Document fdoc = app.NewFamilyDocument(templateFileName);
 
             if (null == fdoc)
             {
@@ -258,41 +301,28 @@ namespace TransITGeometryTransferRevit
                 return Result.Failed;
             }
 
-            Transaction t = new Transaction(fdoc,
-              "Create structural stiffener family");
 
-            t.Start();
+            Transaction revitTransaction = new Transaction(fdoc, "Creating tunnel profile family");
+            {
+                revitTransaction.Start();
 
-            CreateExtrusion(fdoc, _countour, _thicknessMm);
+                CreateExtrusion(fdoc, _countour, _thicknessMm);
 
-            t.Commit();
+                revitTransaction.Commit();
+            }
 
             // save our new family background document
             // and reopen it in the Revit user interface:
 
-            string filename = Path.Combine(
-              Path.GetTempPath(), _family_name + _rfa_ext);
+            string filename = Path.Combine(Path.GetTempPath(), _family_name + _rfa_ext);
 
             SaveAsOptions opt = new SaveAsOptions();
             opt.OverwriteExistingFile = true;
 
             fdoc.SaveAs(filename, opt);
 
-            bool closeAndOpen = true;
+            fdoc.Close(false);
 
-            if (closeAndOpen)
-            {
-                // cannot close the newly generated family file
-                // if it is the only open document; that throws 
-                // an exception saying "The active document may 
-                // not be closed from the API."
-
-                fdoc.Close(false);
-
-                // this obviously invalidates the uidoc 
-                // instance on the previously open document:
-                //uiapp.OpenAndActivateDocument( filename );
-            }
             #endregion // Create a new structural stiffener family
 
 
@@ -303,121 +333,32 @@ namespace TransITGeometryTransferRevit
 
             #region Insert stiffener family instance
 
-            t = new Transaction(doc,
-              "Insert structural stiffener family instance");
-
-            t.Start();
-
-            // load the family ... but check whether 
-            // it was already loaded first
-
-            Family family = null;
-
-            FilteredElementCollector a
-              = new FilteredElementCollector(doc)
-                .OfClass(typeof(Family));
-
-            int n = a.Count<Element>(
-              e => e.Name.Equals(_family_name));
-
-            if (0 < n)
+            revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
             {
-                family = a.First<Element>(
-                  e => e.Name.Equals(_family_name))
-                    as Family;
-            }
-            else
-            {
-                // calling this without a prior call 
-                // to SaveAs causes a "serious error":
-                //family = fdoc.LoadFamily( doc ); 
-
-                doc.LoadFamily(filename, out family);
-            }
-
-            FamilySymbol symbol = null;
+                revitTransaction.Start();
 
 
-            //foreach (FamilySymbol s in family.Symbols)
-            //{
-            //    symbol = s;
-
-            //    // our family only contains one
-            //    // symbol, so pick it and leave
-
-            //    break;
-            //}
-
-            ISet<ElementId> familySymbolIds = family.GetFamilySymbolIds();
-
-
-            // Get family symbols which is contained in this family
-            foreach (ElementId id in familySymbolIds)
-            {
-                FamilySymbol familySymbol = family.Document.GetElement(id) as FamilySymbol;
-
-                symbol = familySymbol;
-
-                // TODO: Debug this context
-                break;
-            }
-
-
-
-
-            bool useSimpleInsertionPoint = true;
-
-            if (useSimpleInsertionPoint)
-            {
-                //Plane plane = app.Create.NewPlane( new XYZ( 1, 2, 3 ), XYZ.Zero );
-                //SketchPlane sketch = doc.Create.NewSketchPlane( plane );
-                //commandData.View.SketchPlane = sketch;
-
-                XYZ p = uidoc.Selection.PickPoint(
-                  "Please pick a point for family instance insertion");
-
-                StructuralType st = StructuralType.UnknownFraming;
+                Family family = LoadFamilyIfNotLoaded(doc, filename);
+                FamilySymbol symbol = GetFirstFamilySymbol(family);
 
                 // Make sure to activate symbol
                 if (!symbol.IsActive)
                 { symbol.Activate(); doc.Regenerate(); }
 
+
+                XYZ p = new XYZ(0, 0, 0);
+                StructuralType st = StructuralType.UnknownFraming;
+
                 doc.Create.NewFamilyInstance(p, symbol, st);
+
+
+                revitTransaction.Commit();
             }
 
-            bool useFaceReference = false;
 
-            if (useFaceReference)
-            {
-                Reference r = uidoc.Selection.PickObject(ObjectType.Face,
-                  "Please pick a point on a face for family instance insertion");
 
-                Element e = doc.GetElement(r.ElementId);
-                GeometryObject obj = e.GetGeometryObjectFromReference(r);
-                PlanarFace face = obj as PlanarFace;
+            
 
-                if (null == face)
-                {
-                    message = "Please select a point on a planar face.";
-                    t.RollBack();
-                    return Result.Failed;
-                }
-                else
-                {
-                    XYZ p = r.GlobalPoint;
-                    XYZ v = face.FaceNormal.CrossProduct(XYZ.BasisZ);
-                    if (v.IsZeroLength())
-                    {
-                        v = face.FaceNormal.CrossProduct(XYZ.BasisX);
-                    }
-                    doc.Create.NewFamilyInstance(r, p, v, symbol);
-
-                    // this throws an exception saying that the face has no reference on it:
-                    //doc.Create.NewFamilyInstance( face, p, v, symbol ); 
-                }
-            }
-
-            t.Commit();
 
             #endregion // Insert stiffener family instance
 
