@@ -22,8 +22,13 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// </summary>
         /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
         /// <returns>Returns a new NurbSpline Curve based on the poly curve</returns>
-        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve)
+        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve, XYZ offset = null)
         {
+            if (offset == null)
+            {
+                offset = new XYZ(0, 0, 0);
+            }
+
             List<XYZ> controlPoints = new List<XYZ>();
             List<double> weights = new List<double>();
 
@@ -32,7 +37,7 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
             foreach (var coord in coordList)
             {
-                controlPoints.Add(new XYZ(coord[0], coord[1], coord[2]));
+                controlPoints.Add(new XYZ(coord[0] + offset[0], coord[1] + offset[1], coord[2] + offset[2]));
                 weights.Add(1.0);
             }
 

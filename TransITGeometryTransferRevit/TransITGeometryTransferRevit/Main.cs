@@ -262,7 +262,7 @@ namespace TransITGeometryTransferRevit
             return symbol;
         }
 
-        private string CreateTunnelProfileFamily(ExternalCommandData commandData)
+        private string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcRepresentationItem profileIfcRepresentationItem)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -290,16 +290,30 @@ namespace TransITGeometryTransferRevit
 
                 //CreateExtrusion(fdoc, _countour, _thicknessMm);
 
-                //var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
-                //var revitProfile = ifcProfileCurve.ToCurve();
+                var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
+                var revitProfile = ifcProfileCurve.ToCurve();
+                var offsetCurve = ifcProfileCurve.ToCurve(-revitProfile.GetEndPoint(0));
+
+                var curveArrayProfile = new CurveArray();
+                curveArrayProfile.Append(offsetCurve);
 
 
                 // https://forums.autodesk.com/t5/revit-api-forum/3d-model-line/td-p/5961937
                 var profile = CreateProfile(_countour);
 
-                var plane =  Plane.CreateByThreePoints(_countour[0], _countour[1], _countour[2]);
+                //var plane =  Plane.CreateByThreePoints(_countour[0], _countour[1], _countour[2]);
+                // TODO: Fix this can be colinear
+
+                var asd = curveArrayProfile.get_Item(0).Tessellate();
+
+
+                //var asd2 = curveArrayProfile.get_Item(0).
+                // TODO: Fix this
+                var plane =  Plane.CreateByThreePoints(asd[0], asd[2123], asd[4567]);
+
+
                 SketchPlane skp = SketchPlane.Create(fdoc, plane);
-                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(profile, skp);
+                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(curveArrayProfile, skp);
 
                 revitTransaction.Commit();
             }
@@ -335,7 +349,80 @@ namespace TransITGeometryTransferRevit
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            var filename = CreateTunnelProfileFamily(commandData);
+
+
+            string filename = null;
+
+
+            var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
+
+            FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
+
+            using (var model = IfcStore.Open(ifcFileInfo.FullName))
+            {
+                using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                {
+
+                    var objects = model.Instances.OfType<IfcProduct>();
+
+                    foreach (var obj in objects)
+                    {
+
+                        // TODO: Refactor this, should be a better way of finding the tunnel
+                        if (obj.Representation == null || obj.Representation.Representations.Count != 3)
+                        {
+                            continue;
+                        }
+
+                        var representations = obj.Representation.Representations;
+
+
+                        IfcRepresentation axisRepresentation = null;
+                        IfcRepresentation profileRepresentation = null;
+
+                        foreach (var representation in representations)
+                        {
+                            if (representation.RepresentationIdentifier == "Axis")
+                            {
+                                axisRepresentation = representation;
+                            }
+
+                            if (representation.RepresentationIdentifier == "Profile")
+                            {
+                                profileRepresentation = representation;
+                            }
+                        }
+
+                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                        filename = CreateTunnelProfileFamily(commandData, axisRepresentation.Items[0]);
+
+                        List<CurveLoop> revitProfiles = new List<CurveLoop>();
+
+                        foreach (var ifcProfileItem in profileRepresentation.Items)
+                        {
+                            var ifcProfileCurve = ifcProfileItem as IfcIndexedPolyCurve;
+                            var revitProfile = ifcProfileCurve.ToCurveLoop();
+                            revitProfiles.Add(revitProfile);
+                        }
+
+                        var revitTunnelLine = ifcTunnelLine.ToCurve();
+
+
+
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+
+            
 
 
 
