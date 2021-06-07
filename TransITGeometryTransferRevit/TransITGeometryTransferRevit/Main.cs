@@ -334,6 +334,15 @@ namespace TransITGeometryTransferRevit
                 SketchPlane skp = SketchPlane.Create(fdoc, plane);
                 ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(offsetCurveArray, skp);
 
+
+
+                //fdoc.get_Parameter(BuiltInParameter.FAMILY_WORK_PLANE_BASED).Set(0);
+                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_WORK_PLANE_BASED).Set(1);
+                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_SHARED).Set(1);
+                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_ALWAYS_VERTICAL).Set(0);
+
+
+
                 revitTransaction.Commit();
             }
 
@@ -503,6 +512,8 @@ namespace TransITGeometryTransferRevit
 
 
                 Family family = LoadFamilyIfNotLoaded(doc, filename);
+                
+
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
 
                 // Make sure to activate symbol
