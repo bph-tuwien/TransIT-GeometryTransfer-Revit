@@ -295,7 +295,8 @@ namespace TransITGeometryTransferRevit
 
                 var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
                 var revitProfile = ifcProfileCurve.ToCurve();
-                var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
+                //var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
+                var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet);
 
 
 
@@ -304,7 +305,8 @@ namespace TransITGeometryTransferRevit
 
 
 
-                var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
+                //var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
+                var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet);
 
                 var curveArrayProfile = new CurveArray();
                 curveArrayProfile.Append(offsetCurve);
@@ -446,7 +448,6 @@ namespace TransITGeometryTransferRevit
 
                         IfcRepresentation axisRepresentation = null;
                         IfcRepresentation profileRepresentation = null;
-                        IfcRepresentation referenceRepresentation = null;
 
                         foreach (var representation in representations)
                         {
