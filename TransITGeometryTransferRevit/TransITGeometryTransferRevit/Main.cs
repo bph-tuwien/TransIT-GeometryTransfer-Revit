@@ -19,6 +19,9 @@ using System.Linq;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI.Selection;
+using Xbim.Ifc4.GeometricModelResource;
+using Xbim.Common;
+using Xbim.Ifc4.MeasureResource;
 
 namespace TransITGeometryTransferRevit
 {
@@ -294,6 +297,13 @@ namespace TransITGeometryTransferRevit
                 var revitProfile = ifcProfileCurve.ToCurve();
                 var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
 
+
+
+                IfcCartesianPointList3D pointList = ifcProfileCurve.Points as IfcCartesianPointList3D;
+                var coordList = pointList.CoordList;
+
+
+
                 var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
 
                 var curveArrayProfile = new CurveArray();
@@ -313,7 +323,10 @@ namespace TransITGeometryTransferRevit
                 // TODO: Fix this
                 //var plane =  Plane.CreateByThreePoints(asd[0], asd[100], asd[200]);
                 var nurb = offsetCurve as NurbSpline;
-                var plane = Plane.CreateByThreePoints(nurb.CtrlPoints[0], nurb.CtrlPoints[1], nurb.CtrlPoints[2]);
+
+                var nonColinearPoints = GetThreeNonColinearPoints(coordList.ToXYZArray());
+
+                var plane = Plane.CreateByThreePoints(nonColinearPoints[0], nonColinearPoints[1], nonColinearPoints[2]);
 
 
                 SketchPlane skp = SketchPlane.Create(fdoc, plane);
@@ -334,7 +347,57 @@ namespace TransITGeometryTransferRevit
             return filename;
         }
 
+        
 
+        public static XYZ[] GetThreeNonColinearPoints(XYZ[] coordList)
+        {
+            // TODO: Check if length is > 3
+
+            for (int i = 0; i < coordList.Length; i++)
+            {
+                for (int j = i+1; j < coordList.Length; j++)
+                {
+                    for (int k = j+1; k < coordList.Length; k++)
+                    {
+                        var points = new XYZ[] { coordList[i], coordList[j], coordList[k] };
+                        if (!IsColinear(points))
+                        {
+                            return points;
+                        }
+                    }
+                }
+            }
+
+            throw new ArgumentException("Provided coordlist is fully colinear");
+        }
+
+        public static bool IsColinear(XYZ[] points)
+        {
+            // TODO: Check Lenght == 3
+            return IsColinear(points[0], points[1], points[2]);
+        }
+
+            public static bool IsColinear(XYZ p1, XYZ p2, XYZ p3)
+        {
+            var d1 = (p1 - p2).GetLength();
+            var d2 = (p1 - p3).GetLength();
+            var d3 = (p2 - p3).GetLength();
+
+            if (d1 + d2 <= d3)
+            {
+                return true;
+            }
+            if (d1 + d3 <= d2)
+            {
+                return true;
+            }
+            if (d2 + d3 <= d1)
+            {
+                return true;
+            }
+
+            return false;
+        }
 
 
         /// <summary>

@@ -97,6 +97,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
             return curveArray;
         }
 
+        
+
         /// <summary>
         /// Recreates an IfcIndexedPolyCurve as a Revit CurveLoop. If the given curve is not closed, the new CurveLoop
         /// will be closed with a simple Line segment between the end point and start point. Duplicated points at the
@@ -157,6 +159,18 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
                 throw new ArgumentOutOfRangeException("The given coordinate does not contain exactly 3 components.");
             }
             return new XYZ(coord[0], coord[1], coord[2]);
+        }
+
+        public static XYZ[] ToXYZArray(this IItemSet<IItemSet<IfcLengthMeasure>> coordList)
+        {
+            var array = new List<XYZ>();
+
+            foreach (var coord in coordList)
+            {
+                array.Add(new XYZ(coord[0], coord[1], coord[2]));
+            }
+
+            return array.ToArray();
         }
 
         /// <summary>
