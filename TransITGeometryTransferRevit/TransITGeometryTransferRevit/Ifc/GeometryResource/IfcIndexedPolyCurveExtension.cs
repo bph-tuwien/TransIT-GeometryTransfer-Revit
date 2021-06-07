@@ -87,7 +87,10 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
             foreach (var ifcCurveSegment in ifcIndexedPolyCurve.Segments)
             {
                 var curve = ifcCurveSegment.ToCurve(coordList, unitConversion, offset);
-                curveArray.Append(curve);
+                if (curve != null)
+                {
+                    curveArray.Append(curve);
+                }
             }
             
 
@@ -191,6 +194,11 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
                 var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]) * unitConversion + offset;
                 var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) * unitConversion + offset;
+
+                if ((startPoint - endPoint).IsZeroLength())
+                {
+                    return null;
+                }
 
                 return Line.CreateBound(startPoint, endPoint);
             }
