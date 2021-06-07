@@ -12,6 +12,29 @@ using Xbim.Ifc4.MeasureResource;
 
 namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 {
+
+    public static class Constants
+    {
+        public const double MeterToFeet = 3.28084;
+        public const double DecimeterToFeet = MeterToFeet * 0.1;
+        public const double CentimeterToFeet = MeterToFeet * 0.01;
+        public const double MillimeterToFeet = MeterToFeet * 0.001;
+
+        public const double FeetToMeter = 0.3048;
+        public const double FeetToDecimeter = FeetToMeter * 10.0;
+        public const double FeetToCentimeter = FeetToMeter * 100.0;
+        public const double FeetToMillimeter = FeetToMeter * 1000.0;
+
+        public const double Identity = 1.0;
+
+
+
+    }
+
+
+
+
+
     /// <summary>
     /// Extension methods to convert various IfcIndexedPolyCurve entities to Revit ones.
     /// </summary>
@@ -22,7 +45,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// </summary>
         /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
         /// <returns>Returns a new NurbSpline Curve based on the poly curve</returns>
-        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve, XYZ offset = null)
+        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+                                    XYZ offset = null)
         {
             if (offset == null)
             {
@@ -37,13 +61,37 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
             foreach (var coord in coordList)
             {
-                controlPoints.Add(new XYZ(coord[0] + offset[0], coord[1] + offset[1], coord[2] + offset[2]));
+                controlPoints.Add(new XYZ(coord[0], coord[1], coord[2]) * unitConversion + offset);
                 weights.Add(1.0);
             }
 
             Curve pathCurve = NurbSpline.CreateCurve(controlPoints, weights);
 
             return pathCurve;
+        }
+
+        public static CurveArray ToCurveArray(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+                                              XYZ offset = null)
+        {
+            if (offset == null)
+            {
+                offset = new XYZ(0, 0, 0);
+            }
+
+            CurveArray curveArray = new CurveArray();
+
+            IfcCartesianPointList3D pointList = ifcIndexedPolyCurve.Points as IfcCartesianPointList3D;
+            var coordList = pointList.CoordList;
+
+
+            foreach (var ifcCurveSegment in ifcIndexedPolyCurve.Segments)
+            {
+                var curve = ifcCurveSegment.ToCurve(coordList, unitConversion, offset);
+                curveArray.Append(curve);
+            }
+            
+
+            return curveArray;
         }
 
         /// <summary>
@@ -53,8 +101,14 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// </summary>
         /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
         /// <returns>Returns a Closed CurveLoop based on the poly curve</returns>
-        public static CurveLoop ToCurveLoop(this IfcIndexedPolyCurve ifcIndexedPolyCurve)
+        public static CurveLoop ToCurveLoop(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+                                            XYZ offset = null)
         {
+            if (offset == null)
+            {
+                offset = new XYZ(0, 0, 0);
+            }
+
             IfcCartesianPointList3D pointList = ifcIndexedPolyCurve.Points as IfcCartesianPointList3D;
             var coordList = pointList.CoordList;
 
@@ -67,7 +121,7 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
             foreach (var segment in ifcIndexedPolyCurve.Segments)
             {
-                var curve = segment.ToCurve(coordList);
+                var curve = segment.ToCurve(coordList, unitConversion, offset);
                 if (curve != null)
                 {
                     profile.Append(curve);
@@ -109,8 +163,16 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// <param name="segment">The given segment containing the indices</param>
         /// <param name="coordList">All the coordinates in the containing curve, not just the segment's coordinates</param>
         /// <returns>Returns the segment as a Revit Curve, either Line or Arc</returns>
-        private static Curve ToCurve(this IfcSegmentIndexSelect segment, IItemSet<IItemSet<IfcLengthMeasure>> coordList)
+        private static Curve ToCurve(this IfcSegmentIndexSelect segment, IItemSet<IItemSet<IfcLengthMeasure>> coordList,
+                                     double unitConversion = Constants.Identity, XYZ offset = null)
         {
+
+            if (offset == null)
+            {
+                offset = new XYZ(0, 0, 0);
+            }
+
+
             if (segment is IfcLineIndex line)
             {
                 List<IfcPositiveInteger> indexes = line.Value as List<IfcPositiveInteger>;
@@ -127,8 +189,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
                 }
 
 
-                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]);
-                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]);
+                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]) * unitConversion + offset;
+                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) * unitConversion + offset;
 
                 return Line.CreateBound(startPoint, endPoint);
             }
@@ -149,9 +211,9 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
                     return null;
                 }
 
-                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]);
-                var onArcPoint = new XYZ(coordList[onArcIndex][0], coordList[onArcIndex][1], coordList[onArcIndex][2]);
-                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]);
+                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]) * unitConversion + offset;
+                var onArcPoint = new XYZ(coordList[onArcIndex][0], coordList[onArcIndex][1], coordList[onArcIndex][2]) * unitConversion + offset;
+                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) * unitConversion + offset;
 
                 return Arc.Create(startPoint, endPoint, onArcPoint);
 

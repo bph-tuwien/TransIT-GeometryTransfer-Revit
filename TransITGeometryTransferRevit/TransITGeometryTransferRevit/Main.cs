@@ -292,7 +292,9 @@ namespace TransITGeometryTransferRevit
 
                 var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
                 var revitProfile = ifcProfileCurve.ToCurve();
-                var offsetCurve = ifcProfileCurve.ToCurve(-revitProfile.GetEndPoint(0));
+                var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
+
+                var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
 
                 var curveArrayProfile = new CurveArray();
                 curveArrayProfile.Append(offsetCurve);
@@ -309,11 +311,13 @@ namespace TransITGeometryTransferRevit
 
                 //var asd2 = curveArrayProfile.get_Item(0).
                 // TODO: Fix this
-                var plane =  Plane.CreateByThreePoints(asd[0], asd[2123], asd[4567]);
+                //var plane =  Plane.CreateByThreePoints(asd[0], asd[100], asd[200]);
+                var nurb = offsetCurve as NurbSpline;
+                var plane = Plane.CreateByThreePoints(nurb.CtrlPoints[0], nurb.CtrlPoints[1], nurb.CtrlPoints[2]);
 
 
                 SketchPlane skp = SketchPlane.Create(fdoc, plane);
-                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(curveArrayProfile, skp);
+                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(offsetCurveArray, skp);
 
                 revitTransaction.Commit();
             }
@@ -369,7 +373,7 @@ namespace TransITGeometryTransferRevit
                     {
 
                         // TODO: Refactor this, should be a better way of finding the tunnel
-                        if (obj.Representation == null || obj.Representation.Representations.Count != 3)
+                        if (obj.Representation == null || obj.Representation.Representations.Count != 4)
                         {
                             continue;
                         }
@@ -379,6 +383,7 @@ namespace TransITGeometryTransferRevit
 
                         IfcRepresentation axisRepresentation = null;
                         IfcRepresentation profileRepresentation = null;
+                        IfcRepresentation referenceRepresentation = null;
 
                         foreach (var representation in representations)
                         {
@@ -387,7 +392,7 @@ namespace TransITGeometryTransferRevit
                                 axisRepresentation = representation;
                             }
 
-                            if (representation.RepresentationIdentifier == "Profile")
+                            if (representation.RepresentationIdentifier == "Reference")
                             {
                                 profileRepresentation = representation;
                             }
@@ -395,7 +400,7 @@ namespace TransITGeometryTransferRevit
 
                         IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
 
-                        filename = CreateTunnelProfileFamily(commandData, axisRepresentation.Items[0]);
+                        filename = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
 
                         List<CurveLoop> revitProfiles = new List<CurveLoop>();
 
