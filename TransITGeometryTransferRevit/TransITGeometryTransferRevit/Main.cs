@@ -223,7 +223,7 @@ namespace TransITGeometryTransferRevit
 
 
 
-        private Family LoadFamilyIfNotLoaded(Document doc, string filename)
+        private Family LoadFamilyIfNotLoaded(Document doc, string filename, string familyName)
         {
             // before loading the family, it needs to be checked wheter it is already loaded or not
 
@@ -231,11 +231,11 @@ namespace TransITGeometryTransferRevit
 
             FilteredElementCollector a = new FilteredElementCollector(doc).OfClass(typeof(Family));
 
-            int n = a.Count<Element>(e => e.Name.Equals(_family_name));
+            int n = a.Count<Element>(e => e.Name.Equals(familyName));
 
             if (0 < n)
             {
-                family = a.First<Element>(e => e.Name.Equals(_family_name)) as Family;
+                family = a.First<Element>(e => e.Name.Equals(familyName)) as Family;
             }
             else
             {
@@ -500,19 +500,48 @@ namespace TransITGeometryTransferRevit
 
 
 
-            
 
 
+            // Loading Profile Family
 
-            #region Insert stiffener family instance
 
             var revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
             {
                 revitTransaction.Start();
 
 
-                Family family = LoadFamilyIfNotLoaded(doc, filename);
-                
+                Family family = LoadFamilyIfNotLoaded(doc, filename, _family_name);
+
+
+                FamilySymbol symbol = GetFirstFamilySymbol(family);
+
+                // Make sure to activate symbol
+                if (!symbol.IsActive)
+                { symbol.Activate(); doc.Regenerate(); }
+
+
+                XYZ p = new XYZ(10, 10, 0);
+                StructuralType st = StructuralType.UnknownFraming;
+
+                doc.Create.NewFamilyInstance(p, symbol, st);
+
+
+                revitTransaction.Commit();
+            }
+
+
+
+            // Loading Tunnel Section Family
+
+
+
+            revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
+            {
+                revitTransaction.Start();
+
+
+                Family family = LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
+
 
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
 
@@ -524,15 +553,18 @@ namespace TransITGeometryTransferRevit
                 XYZ p = new XYZ(0, 0, 0);
                 StructuralType st = StructuralType.UnknownFraming;
 
-                doc.Create.NewFamilyInstance(p, symbol, st);
-
+                //doc.Create.NewFamilyInstance(p, symbol, st);
+                //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
+                CreateAdaptiveComponentInstance(doc, symbol);
 
                 revitTransaction.Commit();
             }
 
 
 
-            #endregion // Insert stiffener family instance
+
+
+
 
             return Result.Succeeded;
 
@@ -540,7 +572,24 @@ namespace TransITGeometryTransferRevit
 
 
 
+        private void CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol)
+        {
+            // Create a new instance of an adaptive component family
+            FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(document, symbol);
 
+            // Get the placement points of this instance
+            IList<ElementId> placePointIds = new List<ElementId>();
+            placePointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(instance);
+            double x = 0;
+
+            // Set the position of each placement point
+            foreach (ElementId id in placePointIds)
+            {
+                ReferencePoint point = document.GetElement(id) as ReferencePoint;
+                point.Position = new Autodesk.Revit.DB.XYZ(10 * x, 10 * Math.Cos(x), 0);
+                x += Math.PI / 6;
+            }
+        }
 
 
 
