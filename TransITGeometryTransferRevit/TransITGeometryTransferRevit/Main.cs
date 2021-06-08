@@ -66,7 +66,7 @@ namespace TransITGeometryTransferRevit
         /// <summary>
         /// Name of the generated stiffener family
         /// </summary>
-        const string _family_name = "Tunnel Profile";
+        const string _family_name = "TunnelProfile";
 
         /// <summary>
         /// Conversion factor from millimetre to foot
@@ -503,6 +503,7 @@ namespace TransITGeometryTransferRevit
 
 
             // Loading Profile Family
+            ElementId profileInstanceElementId = null;
 
 
             var revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
@@ -523,7 +524,8 @@ namespace TransITGeometryTransferRevit
                 XYZ p = new XYZ(10, 10, 0);
                 StructuralType st = StructuralType.UnknownFraming;
 
-                doc.Create.NewFamilyInstance(p, symbol, st);
+                var profileInstance = doc.Create.NewFamilyInstance(p, symbol, st);
+                profileInstanceElementId = symbol.Id;
 
 
                 revitTransaction.Commit();
@@ -555,7 +557,31 @@ namespace TransITGeometryTransferRevit
 
                 //doc.Create.NewFamilyInstance(p, symbol, st);
                 //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
-                CreateAdaptiveComponentInstance(doc, symbol);
+                var instance = CreateAdaptiveComponentInstance(doc, symbol);
+
+                ;
+
+                //Parameter myparam = instance.LookupParameter("TestParam");
+                Parameter myparam = instance.LookupParameter("Profile");
+
+                var asd = myparam.AsDouble();
+                var asd2 = myparam.AsElementId();
+                var asd3 = myparam.AsInteger();
+                var asd4 = myparam.AsString();
+                var asd5 = myparam.AsValueString();
+
+                ;
+
+                //myparam.SetValueString("Tunnel Profile");
+                //myparam.SetValueString("69");
+                //myparam.Set("TunnelProfile");
+                myparam.Set(profileInstanceElementId);
+
+                var asd6 = myparam.AsValueString();
+
+
+                ;
+
 
                 revitTransaction.Commit();
             }
@@ -572,7 +598,7 @@ namespace TransITGeometryTransferRevit
 
 
 
-        private void CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol)
+        private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol)
         {
             // Create a new instance of an adaptive component family
             FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(document, symbol);
@@ -586,9 +612,11 @@ namespace TransITGeometryTransferRevit
             foreach (ElementId id in placePointIds)
             {
                 ReferencePoint point = document.GetElement(id) as ReferencePoint;
-                point.Position = new Autodesk.Revit.DB.XYZ(10 * x, 10 * Math.Cos(x), 0);
+                point.Position = new Autodesk.Revit.DB.XYZ(30 * x, 30 * Math.Cos(x), 0);
                 x += Math.PI / 6;
             }
+
+            return instance;
         }
 
 
