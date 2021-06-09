@@ -588,6 +588,133 @@ namespace TransITGeometryTransferRevit
 
 
 
+            // Creating tunnel line and placing tunnel sections on it
+
+
+
+
+            revitTransaction = new Transaction(doc);
+            {
+                revitTransaction.Start("Importing 3d tunnel");
+
+
+                using (var model = IfcStore.Open(ifcFileInfo.FullName))
+                {
+                    using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                    {
+
+                        var objects = model.Instances.OfType<IfcProduct>();
+
+                        foreach (var obj in objects)
+                        {
+
+                            // TODO: Refactor this, should be a better way of finding the tunnel
+                            if (obj.Representation == null || obj.Representation.Representations.Count != 4)
+                            {
+                                continue;
+                            }
+
+                            var representations = obj.Representation.Representations;
+
+
+                            IfcRepresentation axisRepresentation = null;
+
+                            foreach (var representation in representations)
+                            {
+                                if (representation.RepresentationIdentifier == "Axis")
+                                {
+                                    axisRepresentation = representation;
+                                }
+
+                            }
+
+                            IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+
+                            Curve revitTunnelLine = ifcTunnelLine.ToCurve();
+                            Curve revitTunnelLine1 = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -revitTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+                            CurveArray revitTunnelLine2 = ifcTunnelLine.ToCurveArray();
+                            CurveLoop revitTunnelLine3 = ifcTunnelLine.ToCurveLoop();
+
+                            // https://thebuildingcoder.typepad.com/blog/2013/11/placing-equidistant-points-along-a-curve.html
+
+
+
+
+
+
+
+                            Curve curve = revitTunnelLine1;
+
+                            IList<XYZ> tessellation = curve.Tessellate();
+
+                            // Create a list of equi-distant points.
+
+                            List<XYZ> pts = new List<XYZ>(1);
+
+                            double stepsize = 5.0;
+                            double dist = 0.0;
+
+                            XYZ p = curve.GetEndPoint(0);
+
+                            foreach (XYZ q in tessellation)
+                            {
+                                if (0 == pts.Count)
+                                {
+                                    pts.Add(p);
+                                    dist = 0.0;
+                                }
+                                else
+                                {
+                                    dist += p.DistanceTo(q);
+
+                                    if (dist >= stepsize)
+                                    {
+                                        pts.Add(q);
+                                        dist = 0;
+                                    }
+                                    p = q;
+                                }
+                            }
+
+                            // Place a marker circle at each point.
+
+
+                            foreach (XYZ pt in pts)
+                            {
+                                CreateCircle(doc, pt, 1);
+                            }
+
+
+
+
+
+
+
+
+                            ;
+
+                            //revitTunnelLine1.
+
+                            List<double> pathParams = new List<double>();
+
+                            // TODO: FIX THIS - Profile placement is NOT implemented! Arbitrary values
+                            //pathParams.Add(revitTunnelLine.GetEndParameter(0));
+                            //pathParams.Add(revitTunnelLine.GetEndParameter(1));
+
+
+                            ;
+
+
+                        }
+                    }
+                }
+
+                revitTransaction.Commit();
+            }
+
+
+
 
 
 
@@ -596,6 +723,34 @@ namespace TransITGeometryTransferRevit
 
         }
 
+
+
+
+
+
+        /// <summary>
+        /// Create a horizontal detail curve circle of 
+        /// the given radius at the specified point.
+        /// </summary>
+        DetailArc CreateCircle(
+          Document doc,
+          XYZ location,
+          double radius)
+        {
+            XYZ norm = XYZ.BasisZ;
+
+            double startAngle = 0;
+            double endAngle = 2 * Math.PI;
+
+            var plane = Plane.CreateByNormalAndOrigin(norm, location);
+
+
+            Arc arc = Arc.Create(plane,
+              radius, startAngle, endAngle);
+
+            return doc.Create.NewDetailCurve(
+              doc.ActiveView, arc) as DetailArc;
+        }
 
 
         private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol)
