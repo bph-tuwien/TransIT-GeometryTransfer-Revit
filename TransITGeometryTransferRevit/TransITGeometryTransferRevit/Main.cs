@@ -537,61 +537,14 @@ namespace TransITGeometryTransferRevit
 
 
 
-            revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
-            {
-                revitTransaction.Start();
 
-
-                Family family = LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
-
-
-                FamilySymbol symbol = GetFirstFamilySymbol(family);
-
-                // Make sure to activate symbol
-                if (!symbol.IsActive)
-                { symbol.Activate(); doc.Regenerate(); }
-
-
-                XYZ p = new XYZ(0, 0, 0);
-                StructuralType st = StructuralType.UnknownFraming;
-
-                //doc.Create.NewFamilyInstance(p, symbol, st);
-                //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
-                var instance = CreateAdaptiveComponentInstance(doc, symbol);
-
-                ;
-
-                //Parameter myparam = instance.LookupParameter("TestParam");
-                Parameter myparam = instance.LookupParameter("Profile");
-
-                var asd = myparam.AsDouble();
-                var asd2 = myparam.AsElementId();
-                var asd3 = myparam.AsInteger();
-                var asd4 = myparam.AsString();
-                var asd5 = myparam.AsValueString();
-
-                ;
-
-                //myparam.SetValueString("Tunnel Profile");
-                //myparam.SetValueString("69");
-                //myparam.Set("TunnelProfile");
-                myparam.Set(profileInstanceElementId);
-
-                var asd6 = myparam.AsValueString();
-
-
-                ;
-
-
-                revitTransaction.Commit();
-            }
 
 
 
             // Creating tunnel line and placing tunnel sections on it
 
 
-
+            XYZ[] pts = new XYZ[0];
 
             revitTransaction = new Transaction(doc);
             {
@@ -641,49 +594,17 @@ namespace TransITGeometryTransferRevit
 
 
 
+                            pts = CreateEquiDistantPointsOnCurve(revitTunnelLine1);
 
 
-
-                            Curve curve = revitTunnelLine1;
-
-                            IList<XYZ> tessellation = curve.Tessellate();
-
-                            // Create a list of equi-distant points.
-
-                            List<XYZ> pts = new List<XYZ>(1);
-
-                            double stepsize = 5.0;
-                            double dist = 0.0;
-
-                            XYZ p = curve.GetEndPoint(0);
-
-                            foreach (XYZ q in tessellation)
-                            {
-                                if (0 == pts.Count)
-                                {
-                                    pts.Add(p);
-                                    dist = 0.0;
-                                }
-                                else
-                                {
-                                    dist += p.DistanceTo(q);
-
-                                    if (dist >= stepsize)
-                                    {
-                                        pts.Add(q);
-                                        dist = 0;
-                                    }
-                                    p = q;
-                                }
-                            }
-
+                            
                             // Place a marker circle at each point.
 
 
-                            foreach (XYZ pt in pts)
-                            {
-                                CreateCircle(doc, pt, 1);
-                            }
+                            //foreach (XYZ pt in pts)
+                            //{
+                            //    CreateCircle(doc, pt, 1);
+                            //}
 
 
 
@@ -714,7 +635,64 @@ namespace TransITGeometryTransferRevit
             }
 
 
+            // Create tunnel sections
 
+            revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
+            {
+                revitTransaction.Start();
+
+
+                Family family = LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
+
+
+                FamilySymbol symbol = GetFirstFamilySymbol(family);
+
+                // Make sure to activate symbol
+                if (!symbol.IsActive)
+                { symbol.Activate(); doc.Regenerate(); }
+
+
+                XYZ p = new XYZ(0, 0, 0);
+                StructuralType st = StructuralType.UnknownFraming;
+
+                //doc.Create.NewFamilyInstance(p, symbol, st);
+                //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
+
+
+                for (int i = 1; i*2 < pts.Length;i++)
+                {
+                    var instance = CreateAdaptiveComponentInstance(doc, symbol, new XYZ[] { pts[i*2-2], pts[i*2-1], pts[i*2] });
+
+                    ;
+
+
+                    //Parameter myparam = instance.LookupParameter("TestParam");
+                    Parameter myparam = instance.LookupParameter("Profile");
+
+                    var asd = myparam.AsDouble();
+                    var asd2 = myparam.AsElementId();
+                    var asd3 = myparam.AsInteger();
+                    var asd4 = myparam.AsString();
+                    var asd5 = myparam.AsValueString();
+
+                    ;
+
+                    //myparam.SetValueString("Tunnel Profile");
+                    //myparam.SetValueString("69");
+                    //myparam.Set("TunnelProfile");
+                    myparam.Set(profileInstanceElementId);
+
+                    var asd6 = myparam.AsValueString();
+
+
+                    ;
+                }
+
+               
+
+
+                revitTransaction.Commit();
+            }
 
 
 
@@ -725,7 +703,42 @@ namespace TransITGeometryTransferRevit
 
 
 
+        public static XYZ[] CreateEquiDistantPointsOnCurve(Curve curve)
+        {
 
+            IList<XYZ> tessellation = curve.Tessellate();
+
+            // Create a list of equi-distant points.
+
+            List<XYZ> pts = new List<XYZ>(1);
+
+            double stepsize = 5.0;
+            double dist = 0.0;
+
+            XYZ p = curve.GetEndPoint(0);
+
+            foreach (XYZ q in tessellation)
+            {
+                if (0 == pts.Count)
+                {
+                    pts.Add(p);
+                    dist = 0.0;
+                }
+                else
+                {
+                    dist += p.DistanceTo(q);
+
+                    if (dist >= stepsize)
+                    {
+                        pts.Add(q);
+                        dist = 0;
+                    }
+                    p = q;
+                }
+            }
+
+            return pts.ToArray();
+        }
 
 
         /// <summary>
@@ -753,7 +766,7 @@ namespace TransITGeometryTransferRevit
         }
 
 
-        private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol)
+        private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol, XYZ[] points)
         {
             // Create a new instance of an adaptive component family
             FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(document, symbol);
@@ -764,12 +777,19 @@ namespace TransITGeometryTransferRevit
             double x = 0;
 
             // Set the position of each placement point
-            foreach (ElementId id in placePointIds)
+            //foreach (ElementId id in placePointIds)
+            //{
+            //    ReferencePoint point = document.GetElement(id) as ReferencePoint;
+            //    point.Position = new Autodesk.Revit.DB.XYZ(30 * x, 30 * Math.Cos(x), 0);
+            //    x += Math.PI / 6;
+            //}
+
+            for (int i = 0; i < placePointIds.Count; i++)
             {
-                ReferencePoint point = document.GetElement(id) as ReferencePoint;
-                point.Position = new Autodesk.Revit.DB.XYZ(30 * x, 30 * Math.Cos(x), 0);
-                x += Math.PI / 6;
+                ReferencePoint refPoint = document.GetElement(placePointIds[i]) as ReferencePoint;
+                refPoint.Position = points[i];
             }
+
 
             return instance;
         }
