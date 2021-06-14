@@ -279,7 +279,8 @@ namespace TransITGeometryTransferRevit
 
             string templateFileName = Path.Combine(_path, _family_template_name + _family_template_ext);
 
-            Document fdoc = app.NewFamilyDocument(templateFileName);
+            //Document fdoc = app.NewFamilyDocument(templateFileName);
+            Document fdoc = app.OpenDocumentFile("Y:/RevitTunnel/TunnelSection/ProfileTemplateFamily.rfa");
 
             if (null == fdoc)
             {
@@ -524,7 +525,8 @@ namespace TransITGeometryTransferRevit
                 XYZ p = new XYZ(10, 10, 0);
                 StructuralType st = StructuralType.UnknownFraming;
 
-                var profileInstance = doc.Create.NewFamilyInstance(p, symbol, st);
+                //var profileInstance = doc.Create.NewFamilyInstance(p, symbol, st);
+                var profileInstance = doc.FamilyCreate.NewFamilyInstance(p, symbol, st);
                 profileInstanceElementId = symbol.Id;
 
 
@@ -545,6 +547,7 @@ namespace TransITGeometryTransferRevit
 
 
             XYZ[] pts = new XYZ[0];
+            Curve revitTunnelLine1 = null;
 
             revitTransaction = new Transaction(doc);
             {
@@ -585,7 +588,7 @@ namespace TransITGeometryTransferRevit
 
 
                             Curve revitTunnelLine = ifcTunnelLine.ToCurve();
-                            Curve revitTunnelLine1 = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -revitTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+                            revitTunnelLine1 = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -revitTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
                             CurveArray revitTunnelLine2 = ifcTunnelLine.ToCurveArray();
                             CurveLoop revitTunnelLine3 = ifcTunnelLine.ToCurveLoop();
 
@@ -596,6 +599,10 @@ namespace TransITGeometryTransferRevit
 
                             pts = CreateEquiDistantPointsOnCurve(revitTunnelLine1);
 
+
+                           
+
+                            //revitTunnelLine1.Refe
 
                             
                             // Place a marker circle at each point.
@@ -659,11 +666,16 @@ namespace TransITGeometryTransferRevit
                 //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
 
 
-                for (int i = 1; i*2 < pts.Length;i++)
+                for (int i = 1; i  < pts.Length; i++)
+                //for (int i = 1; i  < 2; i++)
                 {
-                    var instance = CreateAdaptiveComponentInstance(doc, symbol, new XYZ[] { pts[i*2-2], pts[i*2-1], pts[i*2] });
+                    var instance = CreateAdaptiveComponentInstance(doc, symbol, new XYZ[] { pts[i - 1], pts[i] });
 
-                    ;
+
+
+
+
+                    // https://www.youtube.com/watch?v=sZWSQJWVhbY
 
 
                     //Parameter myparam = instance.LookupParameter("TestParam");
@@ -688,7 +700,46 @@ namespace TransITGeometryTransferRevit
                     ;
                 }
 
-               
+
+
+
+
+
+
+                //var location1 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0f, PointOnCurveMeasureFrom.Beginning);
+                //var location2 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0.1, PointOnCurveMeasureFrom.Beginning);
+                //var location3 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0.2, PointOnCurveMeasureFrom.Beginning);
+
+                //var pointOnEdge1 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location1);
+                //var pointOnEdge2 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location2);
+                //var pointOnEdge3 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location3);
+
+
+                //// Create a new instance of an adaptive component family
+                //FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
+
+
+                //var placementPoints = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(instance);
+
+
+
+                //var p1 = doc.GetElement(placementPoints[0]) as ReferencePoint;
+                //var p2 = doc.GetElement(placementPoints[1]) as ReferencePoint;
+                //var p3 = doc.GetElement(placementPoints[2]) as ReferencePoint;
+
+                //p1.SetPointElementReference(pointOnEdge1);
+                //p2.SetPointElementReference(pointOnEdge2);
+                //p3.SetPointElementReference(pointOnEdge3);
+
+
+
+
+
+
+
+
+
+
 
 
                 revitTransaction.Commit();
@@ -712,7 +763,7 @@ namespace TransITGeometryTransferRevit
 
             List<XYZ> pts = new List<XYZ>(1);
 
-            double stepsize = 5.0;
+            double stepsize = 5.0 * Constants.MeterToFeet;
             double dist = 0.0;
 
             XYZ p = curve.GetEndPoint(0);
@@ -784,11 +835,27 @@ namespace TransITGeometryTransferRevit
             //    x += Math.PI / 6;
             //}
 
-            for (int i = 0; i < placePointIds.Count; i++)
+            // https://forums.autodesk.com/t5/revit-api-forum/edge-reference-of-a-family-instance/td-p/7088651
+
+            for (int i = 0; i < 2; i++)
             {
                 ReferencePoint refPoint = document.GetElement(placePointIds[i]) as ReferencePoint;
                 refPoint.Position = points[i];
+                //refPoint.SetPointElementReference()
             }
+
+            ReferencePoint refPoint1 = document.GetElement(placePointIds[2]) as ReferencePoint;
+            refPoint1.Position = points[0] + new XYZ(0,0,10000 * Constants.MillimeterToFeet);
+
+            ReferencePoint refPoint2 = document.GetElement(placePointIds[3]) as ReferencePoint;
+            refPoint2.Position = points[0] + new XYZ(10000 * Constants.MillimeterToFeet, 0, 0);
+
+
+            ReferencePoint refPoint3 = document.GetElement(placePointIds[4]) as ReferencePoint;
+            refPoint3.Position = points[1] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet);
+
+            ReferencePoint refPoint4 = document.GetElement(placePointIds[5]) as ReferencePoint;
+            refPoint4.Position = points[1] + new XYZ(10000 * Constants.MillimeterToFeet, 0, 0);
 
 
             return instance;
