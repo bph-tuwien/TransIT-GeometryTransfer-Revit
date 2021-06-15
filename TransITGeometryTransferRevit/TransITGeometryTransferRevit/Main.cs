@@ -6,8 +6,6 @@ using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using CreationApplication = Autodesk.Revit.Creation.Application;
-using FamilyItemFactory = Autodesk.Revit.Creation.FamilyItemFactory;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB.Structure;
 
@@ -85,63 +83,6 @@ namespace TransITGeometryTransferRevit
         /// Extrusion thickness for stiffener plate
         /// </summary>
         const double _thicknessMm = 20.0;
-
-        /// <summary>
-        /// Return the first element found of the 
-        /// specific target type with the given name.
-        /// </summary>
-        Element FindElement(
-          Document doc,
-          Type targetType,
-          string targetName)
-        {
-            return new FilteredElementCollector(doc)
-              .OfClass(targetType)
-              .First<Element>(e => e.Name.Equals(targetName));
-
-            // parse the collection for the given name
-            // using LINQ query here. 
-
-            //var targetElems 
-            //  = from element in collector 
-            //    where element.Name.Equals( targetName ) 
-            //    select element;
-
-            //return targetElems.First<El
-            //List<Element> elems = targetElems.ToList<Element>();
-
-            //if( elems.Count > 0 )
-            //{  // we should have only one with the given name. 
-            //  return elems[0];
-            //}
-
-            // cannot find it.
-            //return null;
-
-            /*
-            // most efficient way to find a named 
-            // family symbol: use a parameter filter.
-
-            ParameterValueProvider provider
-              = new ParameterValueProvider(
-                new ElementId( BuiltInParameter.DATUM_TEXT ) ); // VIEW_NAME for a view
-
-            FilterStringRuleEvaluator evaluator
-              = new FilterStringEquals();
-
-            FilterRule rule = new FilterStringRule(
-              provider, evaluator, targetName, true );
-
-            ElementParameterFilter filter
-              = new ElementParameterFilter( rule );
-
-            return new FilteredElementCollector( doc )
-              .OfClass( targetType )
-              .WherePasses( filter )
-              .FirstElement();
-            */
-        }
-
 
 
 
@@ -310,7 +251,7 @@ namespace TransITGeometryTransferRevit
             return IsColinear(points[0], points[1], points[2]);
         }
 
-            public static bool IsColinear(XYZ p1, XYZ p2, XYZ p3)
+        public static bool IsColinear(XYZ p1, XYZ p2, XYZ p3)
         {
             var d1 = (p1 - p2).GetLength();
             var d2 = (p1 - p3).GetLength();
@@ -714,30 +655,6 @@ namespace TransITGeometryTransferRevit
             return pts.ToArray();
         }
 
-
-        /// <summary>
-        /// Create a horizontal detail curve circle of 
-        /// the given radius at the specified point.
-        /// </summary>
-        DetailArc CreateCircle(
-          Document doc,
-          XYZ location,
-          double radius)
-        {
-            XYZ norm = XYZ.BasisZ;
-
-            double startAngle = 0;
-            double endAngle = 2 * Math.PI;
-
-            var plane = Plane.CreateByNormalAndOrigin(norm, location);
-
-
-            Arc arc = Arc.Create(plane,
-              radius, startAngle, endAngle);
-
-            return doc.Create.NewDetailCurve(
-              doc.ActiveView, arc) as DetailArc;
-        }
 
 
         private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol, XYZ[] points)
