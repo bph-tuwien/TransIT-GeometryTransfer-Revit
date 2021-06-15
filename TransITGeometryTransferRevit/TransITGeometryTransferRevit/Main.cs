@@ -526,7 +526,7 @@ namespace TransITGeometryTransferRevit
                 StructuralType st = StructuralType.UnknownFraming;
 
                 //var profileInstance = doc.Create.NewFamilyInstance(p, symbol, st);
-                var profileInstance = doc.FamilyCreate.NewFamilyInstance(p, symbol, st);
+                //var profileInstance = doc.FamilyCreate.NewFamilyInstance(p, symbol, st);
                 profileInstanceElementId = symbol.Id;
 
 
@@ -763,7 +763,7 @@ namespace TransITGeometryTransferRevit
 
             List<XYZ> pts = new List<XYZ>(1);
 
-            double stepsize = 5.0 * Constants.MeterToFeet;
+            double stepsize = 1.0 * Constants.MeterToFeet;
             double dist = 0.0;
 
             XYZ p = curve.GetEndPoint(0);
@@ -844,18 +844,26 @@ namespace TransITGeometryTransferRevit
                 //refPoint.SetPointElementReference()
             }
 
+
+
+
+            var lineVector = points[1] - points[0];
+            var plane = Plane.CreateByThreePoints(points[0], points[1], points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet));
+            var normal = plane.Normal.Normalize();
+
+
             ReferencePoint refPoint1 = document.GetElement(placePointIds[2]) as ReferencePoint;
             refPoint1.Position = points[0] + new XYZ(0,0,10000 * Constants.MillimeterToFeet);
 
             ReferencePoint refPoint2 = document.GetElement(placePointIds[3]) as ReferencePoint;
-            refPoint2.Position = points[0] + new XYZ(10000 * Constants.MillimeterToFeet, 0, 0);
+            refPoint2.Position = points[0] + normal * 10000 * Constants.MillimeterToFeet;
 
 
             ReferencePoint refPoint3 = document.GetElement(placePointIds[4]) as ReferencePoint;
             refPoint3.Position = points[1] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet);
 
             ReferencePoint refPoint4 = document.GetElement(placePointIds[5]) as ReferencePoint;
-            refPoint4.Position = points[1] + new XYZ(10000 * Constants.MillimeterToFeet, 0, 0);
+            refPoint4.Position = points[1] + normal * 10000 * Constants.MillimeterToFeet;
 
 
             return instance;
