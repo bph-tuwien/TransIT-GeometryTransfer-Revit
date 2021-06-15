@@ -251,6 +251,11 @@ namespace TransITGeometryTransferRevit
         }
 
 
+        /// <summary>
+        /// Finds the Tunnel IfcProduct in the Ifc model based on it's name.
+        /// </summary>
+        /// <param name="ifcModel"></param>
+        /// <returns>The Tunnel IfcProduct or null if could not be found</returns>
         public static IfcProduct GetTunnelIfcProduct(IfcStore ifcModel)
         {
             var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
@@ -287,29 +292,47 @@ namespace TransITGeometryTransferRevit
 
 
             var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
-
             FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
+
+
+            // #################################################################################
+            // CREATING TUNNEL PROFILE FAMILY BASED ON THE IFC TUNNEL'S REFERENCE REPRESENTATION
+            // #################################################################################
 
             using (var ifcModel = IfcStore.Open(ifcFileInfo.FullName))
             {
-                using (var ifcTransaction = ifcModel.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                using (var ifcTransaction = ifcModel.BeginTransaction("Parsing Tunnel to recreate Profile as a Revit Family"))
                 {
-
                     var ifcTunnel = GetTunnelIfcProduct(ifcModel);
+
+                    if (ifcTunnel == null)
+                    {
+                        throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
+                    }
 
                     var representations = ifcTunnel.Representation.Representations;
 
-                    IfcRepresentation profileRepresentation = null;
+                    IfcRepresentation referenceRepresentation = null;
 
                     foreach (var representation in representations)
                     {
                         if (representation.RepresentationIdentifier == "Reference")
                         {
-                            profileRepresentation = representation;
+                            referenceRepresentation = representation;
                         }
                     }
 
-                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
+                    if (referenceRepresentation == null)
+                    {
+                        throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                    }
+
+                    if (referenceRepresentation.Items.Count == 0)
+                    {
+                        throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                    }
+
+                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0]);
 
                 }
             }
