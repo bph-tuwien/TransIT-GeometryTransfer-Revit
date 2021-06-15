@@ -60,29 +60,6 @@ namespace TransITGeometryTransferRevit
         /// <summary>
         /// Conversion factor from millimetre to foot
         /// </summary>
-        const double _mm_to_foot = 1 / 304.8;
-
-        /// <summary>
-        /// Convert a given length to feet
-        /// </summary>
-        double MmToFoot(double length_in_mm)
-        {
-            return _mm_to_foot * length_in_mm;
-        }
-
-        /// <summary>
-        /// Convert a given point defined in millimetre units to feet
-        /// </summary>
-        XYZ MmToFootPoint(XYZ p)
-        {
-            return p.Multiply(_mm_to_foot);
-        }
-
-
-        /// <summary>
-        /// Extrusion thickness for stiffener plate
-        /// </summary>
-        const double _thicknessMm = 20.0;
 
 
 
@@ -283,30 +260,26 @@ namespace TransITGeometryTransferRevit
         /// <returns></returns>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-
-
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-
-
-            string filename = null;
+            string tunnelProfileFamilyPath = null;
 
 
             var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
 
             FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
 
-            using (var model = IfcStore.Open(ifcFileInfo.FullName))
+            using (var ifcModel = IfcStore.Open(ifcFileInfo.FullName))
             {
-                using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                using (var ifcTransaction = ifcModel.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
                 {
 
-                    var objects = model.Instances.OfType<IfcProduct>();
+                    var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
 
-                    foreach (var obj in objects)
+                    foreach (var obj in ifcObjects)
                     {
 
                         // TODO: Refactor this, should be a better way of finding the tunnel
@@ -317,39 +290,17 @@ namespace TransITGeometryTransferRevit
 
                         var representations = obj.Representation.Representations;
 
-
-                        IfcRepresentation axisRepresentation = null;
                         IfcRepresentation profileRepresentation = null;
 
                         foreach (var representation in representations)
                         {
-                            if (representation.RepresentationIdentifier == "Axis")
-                            {
-                                axisRepresentation = representation;
-                            }
-
                             if (representation.RepresentationIdentifier == "Reference")
                             {
                                 profileRepresentation = representation;
                             }
                         }
 
-                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
-
-                        filename = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
-
-                        List<CurveLoop> revitProfiles = new List<CurveLoop>();
-
-                        foreach (var ifcProfileItem in profileRepresentation.Items)
-                        {
-                            var ifcProfileCurve = ifcProfileItem as IfcIndexedPolyCurve;
-                            var revitProfile = ifcProfileCurve.ToCurveLoop();
-                            revitProfiles.Add(revitProfile);
-                        }
-
-                        var revitTunnelLine = ifcTunnelLine.ToCurve();
-
-
+                        tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
 
                     }
                 }
@@ -374,7 +325,7 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Start();
 
 
-                Family family = LoadFamilyIfNotLoaded(doc, filename, _family_name);
+                Family family = LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, _family_name);
 
 
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
