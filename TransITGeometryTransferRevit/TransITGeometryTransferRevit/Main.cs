@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -8,20 +9,16 @@ using Autodesk.Revit.UI;
 using CreationApplication = Autodesk.Revit.Creation.Application;
 using FamilyItemFactory = Autodesk.Revit.Creation.FamilyItemFactory;
 using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.DB.Structure;
 
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Kernel;
 using Xbim.Ifc4.RepresentationResource;
+using Xbim.Ifc4.GeometricModelResource;
 
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
-using System.Linq;
-using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB.Structure;
-using Autodesk.Revit.UI.Selection;
-using Xbim.Ifc4.GeometricModelResource;
-using Xbim.Common;
-using Xbim.Ifc4.MeasureResource;
+
 
 namespace TransITGeometryTransferRevit
 {
@@ -29,12 +26,6 @@ namespace TransITGeometryTransferRevit
     [Regeneration(RegenerationOption.Manual)]
     public class Main : IExternalCommand
     {
-
-
-
-
-
-
 
 
 
@@ -89,19 +80,6 @@ namespace TransITGeometryTransferRevit
             return p.Multiply(_mm_to_foot);
         }
 
-        static int n = 4;
-
-        /// <summary>
-        /// Extrusion profile points defined in millimetres.
-        /// Here is just a very trivial rectangular shape.
-        /// </summary>
-        static List<XYZ> _countour = new List<XYZ>(n)
-    {
-      new XYZ( 0 , -75 , 0 ),
-      new XYZ( 508, -75 , 0 ),
-      new XYZ( 508, 75 , 0 ),
-      new XYZ( 0, 75 , 0 )
-    };
 
         /// <summary>
         /// Extrusion thickness for stiffener plate
@@ -162,62 +140,6 @@ namespace TransITGeometryTransferRevit
               .WherePasses( filter )
               .FirstElement();
             */
-        }
-
-        /// <summary>
-        /// Convert a given list of XYZ points 
-        /// to a CurveArray instance. 
-        /// The points are defined in millimetres, 
-        /// the returned CurveArray in feet.
-        /// </summary>
-        CurveArray CreateProfile(
-          List<XYZ> pts)
-        {
-            CurveArray profile = new CurveArray();
-
-            int n = _countour.Count;
-
-            for (int i = 0; i < n; ++i)
-            {
-                int j = (0 == i) ? n - 1 : i - 1;
-
-                profile.Append(Line.CreateBound(
-                  MmToFootPoint(pts[j]),
-                  MmToFootPoint(pts[i])));
-            }
-            return profile;
-        }
-
-        /// <summary>
-        /// Create an extrusion from a given thickness 
-        /// and list of XYZ points defined in millimetres
-        /// in the given family document, which  must 
-        /// contain a sketch plane named "Ref. Level".
-        /// </summary>
-        Extrusion CreateExtrusion(
-          Document doc,
-          List<XYZ> pts,
-          double thickness)
-        {
-            FamilyItemFactory factory = doc.FamilyCreate;
-
-            CreationApplication creapp = doc.Application.Create;
-
-            //SketchPlane sketch = doc.get_Element( 
-            //  new ElementId( 501 ) ) as SketchPlane;
-
-            SketchPlane sketch = FindElement(doc,
-              typeof(SketchPlane), "Ref. Level")
-                as SketchPlane;
-
-            CurveArrArray curveArrArray = new CurveArrArray();
-
-            curveArrArray.Append(CreateProfile(pts));
-
-            double extrusionHeight = MmToFoot(thickness);
-
-            return factory.NewExtrusion(true,
-              curveArrArray, sketch, extrusionHeight);
         }
 
 
@@ -314,7 +236,6 @@ namespace TransITGeometryTransferRevit
 
 
                 // https://forums.autodesk.com/t5/revit-api-forum/3d-model-line/td-p/5961937
-                var profile = CreateProfile(_countour);
 
                 //var plane =  Plane.CreateByThreePoints(_countour[0], _countour[1], _countour[2]);
                 // TODO: Fix this can be colinear
@@ -763,7 +684,9 @@ namespace TransITGeometryTransferRevit
 
             List<XYZ> pts = new List<XYZ>(1);
 
-            double stepsize = 1.0 * Constants.MeterToFeet;
+            // TODO: Change it back to original
+            //double stepsize = 1.0 * Constants.MeterToFeet;
+            double stepsize = 10.0 * Constants.MeterToFeet;
             double dist = 0.0;
 
             XYZ p = curve.GetEndPoint(0);
