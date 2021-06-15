@@ -251,6 +251,24 @@ namespace TransITGeometryTransferRevit
         }
 
 
+        public static IfcProduct GetTunnelIfcProduct(IfcStore ifcModel)
+        {
+            var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
+
+            foreach (var obj in ifcObjects)
+            {
+                if (obj.Name == "Tunnel")
+                {
+                    return obj;
+                }
+                
+            }
+
+            return null;
+        }
+
+
+
         /// <summary>
         /// Testing family scripting and creation
         /// </summary>
@@ -277,32 +295,22 @@ namespace TransITGeometryTransferRevit
                 using (var ifcTransaction = ifcModel.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
                 {
 
-                    var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
+                    var ifcTunnel = GetTunnelIfcProduct(ifcModel);
 
-                    foreach (var obj in ifcObjects)
+                    var representations = ifcTunnel.Representation.Representations;
+
+                    IfcRepresentation profileRepresentation = null;
+
+                    foreach (var representation in representations)
                     {
-
-                        // TODO: Refactor this, should be a better way of finding the tunnel
-                        if (obj.Representation == null || obj.Representation.Representations.Count != 4)
+                        if (representation.RepresentationIdentifier == "Reference")
                         {
-                            continue;
+                            profileRepresentation = representation;
                         }
-
-                        var representations = obj.Representation.Representations;
-
-                        IfcRepresentation profileRepresentation = null;
-
-                        foreach (var representation in representations)
-                        {
-                            if (representation.RepresentationIdentifier == "Reference")
-                            {
-                                profileRepresentation = representation;
-                            }
-                        }
-
-                        tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
-
                     }
+
+                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, profileRepresentation.Items[0]);
+
                 }
             }
 
