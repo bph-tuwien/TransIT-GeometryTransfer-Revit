@@ -25,27 +25,7 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
 
-        private Family LoadFamilyIfNotLoaded(Document doc, string filename, string familyName)
-        {
-            // before loading the family, it needs to be checked wheter it is already loaded or not
-
-            Family family = null;
-
-            FilteredElementCollector a = new FilteredElementCollector(doc).OfClass(typeof(Family));
-
-            int n = a.Count<Element>(e => e.Name.Equals(familyName));
-
-            if (0 < n)
-            {
-                family = a.First<Element>(e => e.Name.Equals(familyName)) as Family;
-            }
-            else
-            {
-                doc.LoadFamily(filename, out family);
-            }
-
-            return family;
-        }
+        
 
         private FamilySymbol GetFirstFamilySymbol(Family family)
         {
@@ -289,7 +269,7 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Start();
 
 
-                Family family = LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
 
 
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
@@ -426,7 +406,7 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Start();
 
 
-                Family family = LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
 
 
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
