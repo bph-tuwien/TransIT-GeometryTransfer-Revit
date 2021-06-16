@@ -57,11 +57,6 @@ namespace TransITGeometryTransferRevit
         /// </summary>
         const string _family_name = "TunnelProfile";
 
-        /// <summary>
-        /// Conversion factor from millimetre to foot
-        /// </summary>
-
-
 
         private Family LoadFamilyIfNotLoaded(Document doc, string filename, string familyName)
         {
@@ -105,34 +100,37 @@ namespace TransITGeometryTransferRevit
             return symbol;
         }
 
-        private string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcRepresentationItem profileIfcRepresentationItem)
+        /// <summary>
+        /// TODO
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="profileIfcRepresentationItem"></param>
+        /// <returns></returns>
+        public string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcRepresentationItem profileIfcRepresentationItem)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
+
             if (null == doc)
             {
                 throw new ArgumentNullException("Current document is null");
             }
 
-            string templateFileName = Path.Combine(_path, _family_template_name + _family_template_ext);
-
-            //Document fdoc = app.NewFamilyDocument(templateFileName);
-            Document fdoc = app.OpenDocumentFile("Y:/RevitTunnel/TunnelSection/ProfileTemplateFamily.rfa");
+            var profileTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(TemplateFamiliesBase64.profileFamilyTemplateBase64);
+            Document fdoc = app.OpenDocumentFile(profileTemplateFamilyPath);
 
             if (null == fdoc)
             {
-                throw new ArgumentNullException("Cannot create family document");
+                throw new ArgumentNullException("Cannot open template family document");
             }
 
 
             Transaction revitTransaction = new Transaction(fdoc, "Creating tunnel profile family");
             {
                 revitTransaction.Start();
-
-                //CreateExtrusion(fdoc, _countour, _thicknessMm);
 
                 var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
                 var revitProfile = ifcProfileCurve.ToCurve();

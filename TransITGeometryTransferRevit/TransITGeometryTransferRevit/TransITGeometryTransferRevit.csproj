@@ -130,6 +130,7 @@
     <Compile Include="Ifc\GeometryResource\IfcIndexedPolyCurveExtension.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TemplateFamiliesBase64.cs" />
     <Compile Include="UserInteractions.cs" />
   </ItemGroup>
   <ItemGroup>
