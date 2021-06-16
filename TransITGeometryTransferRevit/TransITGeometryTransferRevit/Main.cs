@@ -25,39 +25,6 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
 
-
-
-        /// <summary>
-        /// Family template filename extension
-        /// </summary>
-        const string _family_template_ext = ".rft";
-
-        /// <summary>
-        /// Revit family filename extension
-        /// </summary>
-        const string _rfa_ext = ".rfa";
-
-        /// <summary>
-        /// Family template library path
-        /// </summary>
-        const string _path = "C:/ProgramData/Autodesk/RVT 2021/Family Templates/English";
-
-        /// <summary>
-        /// Family template filename stem
-        /// </summary>
-        const string _family_template_name = "Metric Generic Model";
-
-        // family template path and filename for imperial units
-
-        //const string _path = "C:/ProgramData/Autodesk/RST 2012/Family Templates/English_I";
-        //const string _family_name = "Structural Stiffener";
-
-        /// <summary>
-        /// Name of the generated stiffener family
-        /// </summary>
-        const string _family_name = "TunnelProfile";
-
-
         private Family LoadFamilyIfNotLoaded(Document doc, string filename, string familyName)
         {
             // before loading the family, it needs to be checked wheter it is already loaded or not
@@ -322,7 +289,7 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Start();
 
 
-                Family family = LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, _family_name);
+                Family family = LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
 
 
                 FamilySymbol symbol = GetFirstFamilySymbol(family);
