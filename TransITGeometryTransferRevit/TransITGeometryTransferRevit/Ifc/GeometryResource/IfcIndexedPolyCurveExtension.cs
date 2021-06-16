@@ -13,6 +13,9 @@ using Xbim.Ifc4.MeasureResource;
 namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 {
 
+    /// <summary>
+    /// Unit conversion constants
+    /// </summary>
     public static class Constants
     {
         public const double MeterToFeet = 3.28084;
@@ -27,12 +30,7 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
         public const double Identity = 1.0;
 
-
-
     }
-
-
-
 
 
     /// <summary>

@@ -90,40 +90,24 @@ namespace TransITGeometryTransferRevit
             }
 
 
+            // #######################################
+            // LOADING GENERATED TUNNEL PROFILE FAMILY
+            // #######################################
 
+            ElementId tunnelProfileFamilySymbolId = null;
 
-
-
-
-
-
-
-
-            // Loading Profile Family
-            ElementId profileInstanceElementId = null;
-
-
-            var revitTransaction = new Transaction(doc, "Inserting tunnel profile family instance");
+            var revitTransaction = new Transaction(doc, "Loading tunnel profile family");
             {
                 revitTransaction.Start();
 
 
                 Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
-
-
                 FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
 
-                // Make sure to activate symbol
                 if (!symbol.IsActive)
                 { symbol.Activate(); doc.Regenerate(); }
 
-
-                XYZ p = new XYZ(10, 10, 0);
-                StructuralType st = StructuralType.UnknownFraming;
-
-                //var profileInstance = doc.Create.NewFamilyInstance(p, symbol, st);
-                //var profileInstance = doc.FamilyCreate.NewFamilyInstance(p, symbol, st);
-                profileInstanceElementId = symbol.Id;
+                tunnelProfileFamilySymbolId = symbol.Id;
 
 
                 revitTransaction.Commit();
@@ -131,19 +115,14 @@ namespace TransITGeometryTransferRevit
 
 
 
-            // Loading Tunnel Section Family
 
 
+            // ####################################################################
+            // IMPORTING TUNNEL LINE AND CALCULATING EQUIDISTANT POINTS ON THE LINE
+            // ####################################################################
 
-
-
-
-
-            // Creating tunnel line and placing tunnel sections on it
-
-
-            XYZ[] pts = new XYZ[0];
-            Curve revitTunnelLine1 = null;
+            XYZ[] pointsOnTunnelLine = new XYZ[0];
+            Curve revitTunnelLine = null;
 
             revitTransaction = new Transaction(doc);
             {
@@ -154,83 +133,43 @@ namespace TransITGeometryTransferRevit
                 {
                     using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
                     {
+                        var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(model);
 
-                        var objects = model.Instances.OfType<IfcProduct>();
-
-                        foreach (var obj in objects)
+                        if (ifcTunnel == null)
                         {
-
-                            // TODO: Refactor this, should be a better way of finding the tunnel
-                            if (obj.Representation == null || obj.Representation.Representations.Count != 4)
-                            {
-                                continue;
-                            }
-
-                            var representations = obj.Representation.Representations;
-
-
-                            IfcRepresentation axisRepresentation = null;
-
-                            foreach (var representation in representations)
-                            {
-                                if (representation.RepresentationIdentifier == "Axis")
-                                {
-                                    axisRepresentation = representation;
-                                }
-
-                            }
-
-                            IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
-
-
-                            Curve revitTunnelLine = ifcTunnelLine.ToCurve();
-                            revitTunnelLine1 = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -revitTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
-                            CurveArray revitTunnelLine2 = ifcTunnelLine.ToCurveArray();
-                            CurveLoop revitTunnelLine3 = ifcTunnelLine.ToCurveLoop();
-
-                            // https://thebuildingcoder.typepad.com/blog/2013/11/placing-equidistant-points-along-a-curve.html
-
-
-
-                            // TODO: Change it to 1 meter
-                            pts = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine1, 10.0 * Constants.MeterToFeet);
-
-
-                           
-
-                            //revitTunnelLine1.Refe
-
-                            
-                            // Place a marker circle at each point.
-
-
-                            //foreach (XYZ pt in pts)
-                            //{
-                            //    CreateCircle(doc, pt, 1);
-                            //}
-
-
-
-
-
-
-
-
-                            ;
-
-                            //revitTunnelLine1.
-
-                            List<double> pathParams = new List<double>();
-
-                            // TODO: FIX THIS - Profile placement is NOT implemented! Arbitrary values
-                            //pathParams.Add(revitTunnelLine.GetEndParameter(0));
-                            //pathParams.Add(revitTunnelLine.GetEndParameter(1));
-
-
-                            ;
-
-
+                            throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
                         }
+
+                        var representations = ifcTunnel.Representation.Representations;
+
+                        IfcRepresentation axisRepresentation = null;
+
+                        foreach (var representation in representations)
+                        {
+                            if (representation.RepresentationIdentifier == "Axis")
+                            {
+                                axisRepresentation = representation;
+                            }
+                        }
+
+                        if (axisRepresentation == null)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                        }
+
+                        if (axisRepresentation.Items.Count == 0)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                        }
+
+                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                        Curve tempTunnelLine = ifcTunnelLine.ToCurve();
+                        revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+
+                        // TODO: Change it to 1 meter
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 10.0 * Constants.MeterToFeet);
+
                     }
                 }
 
@@ -262,10 +201,10 @@ namespace TransITGeometryTransferRevit
                 //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
 
 
-                for (int i = 1; i  < pts.Length; i++)
+                for (int i = 1; i < pointsOnTunnelLine.Length; i++)
                 //for (int i = 1; i  < 2; i++)
                 {
-                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, new XYZ[] { pts[i - 1], pts[i] });
+                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] });
 
 
 
@@ -288,7 +227,7 @@ namespace TransITGeometryTransferRevit
                     //myparam.SetValueString("Tunnel Profile");
                     //myparam.SetValueString("69");
                     //myparam.Set("TunnelProfile");
-                    myparam.Set(profileInstanceElementId);
+                    myparam.Set(tunnelProfileFamilySymbolId);
 
                     var asd6 = myparam.AsValueString();
 
