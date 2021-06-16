@@ -176,106 +176,33 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Commit();
             }
 
-
-            // Create tunnel sections
+            // ####################################################################
+            // asdINTS ON THE LINE
+            // ####################################################################
 
             revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
             {
                 revitTransaction.Start();
 
+                var tunnelSectionTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(TemplateFamiliesBase64.tunnelSectionFamilyTemplateBase64);
 
-                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
 
-
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelSectionTemplateFamilyPath, "TunnelSectionFamily");
+                family.Name = "TunnelSectionFamily";
                 FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
+                symbol.Name = "TunnelSectionFamily";
 
-                // Make sure to activate symbol
                 if (!symbol.IsActive)
                 { symbol.Activate(); doc.Regenerate(); }
 
-
-                XYZ p = new XYZ(0, 0, 0);
-                StructuralType st = StructuralType.UnknownFraming;
-
-                //doc.Create.NewFamilyInstance(p, symbol, st);
-                //AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
-
-
                 for (int i = 1; i < pointsOnTunnelLine.Length; i++)
-                //for (int i = 1; i  < 2; i++)
                 {
                     var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] });
 
-
-
-
-
-                    // https://www.youtube.com/watch?v=sZWSQJWVhbY
-
-
-                    //Parameter myparam = instance.LookupParameter("TestParam");
                     Parameter myparam = instance.LookupParameter("Profile");
-
-                    var asd = myparam.AsDouble();
-                    var asd2 = myparam.AsElementId();
-                    var asd3 = myparam.AsInteger();
-                    var asd4 = myparam.AsString();
-                    var asd5 = myparam.AsValueString();
-
-                    ;
-
-                    //myparam.SetValueString("Tunnel Profile");
-                    //myparam.SetValueString("69");
-                    //myparam.Set("TunnelProfile");
                     myparam.Set(tunnelProfileFamilySymbolId);
 
-                    var asd6 = myparam.AsValueString();
-
-
-                    ;
                 }
-
-
-
-
-
-
-
-                //var location1 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0f, PointOnCurveMeasureFrom.Beginning);
-                //var location2 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0.1, PointOnCurveMeasureFrom.Beginning);
-                //var location3 = new PointLocationOnCurve(PointOnCurveMeasurementType.NormalizedCurveParameter, 0.2, PointOnCurveMeasureFrom.Beginning);
-
-                //var pointOnEdge1 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location1);
-                //var pointOnEdge2 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location2);
-                //var pointOnEdge3 = doc.Application.Create.NewPointOnEdge(revitTunnelLine1.Reference, location3);
-
-
-                //// Create a new instance of an adaptive component family
-                //FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(doc, symbol);
-
-
-                //var placementPoints = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(instance);
-
-
-
-                //var p1 = doc.GetElement(placementPoints[0]) as ReferencePoint;
-                //var p2 = doc.GetElement(placementPoints[1]) as ReferencePoint;
-                //var p3 = doc.GetElement(placementPoints[2]) as ReferencePoint;
-
-                //p1.SetPointElementReference(pointOnEdge1);
-                //p2.SetPointElementReference(pointOnEdge2);
-                //p3.SetPointElementReference(pointOnEdge3);
-
-
-
-
-
-
-
-
-
-
-
 
                 revitTransaction.Commit();
             }
