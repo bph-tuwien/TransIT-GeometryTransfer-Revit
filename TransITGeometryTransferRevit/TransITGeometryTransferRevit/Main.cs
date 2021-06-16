@@ -265,7 +265,7 @@ namespace TransITGeometryTransferRevit
                 for (int i = 1; i  < pts.Length; i++)
                 //for (int i = 1; i  < 2; i++)
                 {
-                    var instance = CreateAdaptiveComponentInstance(doc, symbol, new XYZ[] { pts[i - 1], pts[i] });
+                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, new XYZ[] { pts[i - 1], pts[i] });
 
 
 
@@ -349,60 +349,6 @@ namespace TransITGeometryTransferRevit
         }
 
 
-
-
-
-        private FamilyInstance CreateAdaptiveComponentInstance(Document document, FamilySymbol symbol, XYZ[] points)
-        {
-            // Create a new instance of an adaptive component family
-            FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(document, symbol);
-
-            // Get the placement points of this instance
-            IList<ElementId> placePointIds = new List<ElementId>();
-            placePointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(instance);
-            double x = 0;
-
-            // Set the position of each placement point
-            //foreach (ElementId id in placePointIds)
-            //{
-            //    ReferencePoint point = document.GetElement(id) as ReferencePoint;
-            //    point.Position = new Autodesk.Revit.DB.XYZ(30 * x, 30 * Math.Cos(x), 0);
-            //    x += Math.PI / 6;
-            //}
-
-            // https://forums.autodesk.com/t5/revit-api-forum/edge-reference-of-a-family-instance/td-p/7088651
-
-            for (int i = 0; i < 2; i++)
-            {
-                ReferencePoint refPoint = document.GetElement(placePointIds[i]) as ReferencePoint;
-                refPoint.Position = points[i];
-                //refPoint.SetPointElementReference()
-            }
-
-
-
-
-            var lineVector = points[1] - points[0];
-            var plane = Plane.CreateByThreePoints(points[0], points[1], points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet));
-            var normal = plane.Normal.Normalize();
-
-
-            ReferencePoint refPoint1 = document.GetElement(placePointIds[2]) as ReferencePoint;
-            refPoint1.Position = points[0] + new XYZ(0,0,10000 * Constants.MillimeterToFeet);
-
-            ReferencePoint refPoint2 = document.GetElement(placePointIds[3]) as ReferencePoint;
-            refPoint2.Position = points[0] + normal * 10000 * Constants.MillimeterToFeet;
-
-
-            ReferencePoint refPoint3 = document.GetElement(placePointIds[4]) as ReferencePoint;
-            refPoint3.Position = points[1] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet);
-
-            ReferencePoint refPoint4 = document.GetElement(placePointIds[5]) as ReferencePoint;
-            refPoint4.Position = points[1] + normal * 10000 * Constants.MillimeterToFeet;
-
-
-            return instance;
-        }
 
 
 

@@ -218,6 +218,59 @@ namespace TransITGeometryTransferRevit
         }
 
 
+        /// <summary>
+        /// Instantates a tunnel section and sets its adaptive points to a PLACEHOLDER orientation.
+        /// </summary>
+        /// <param name="document">The Revit document to instantate the tunnel section in</param>
+        /// <param name="symbol">The family symbol of the tunnel section family</param>
+        /// <param name="points">The start and end points of the tunnel section</param>
+        /// <returns>The generated tunnel section family instance</returns>
+        public static FamilyInstance CreateTunnelSectionInstance(Document document, FamilySymbol symbol, XYZ[] points)
+        {
+            if (points.Length != 2)
+            {
+                throw new ArgumentOutOfRangeException("points argument has to contain exactly 2 XYZ points");
+            }
+
+
+            FamilyInstance instance = AdaptiveComponentInstanceUtils.CreateAdaptiveComponentInstance(document, symbol);
+
+            IList<ElementId> placePointIds = new List<ElementId>();
+            placePointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(instance);
+
+
+            for (int i = 0; i < 2; i++)
+            {
+                ReferencePoint refPoint = document.GetElement(placePointIds[i]) as ReferencePoint;
+                refPoint.Position = points[i];
+            }
+
+            // REPLACE THIS WITH IMPORTED ORIENTATION DATA
+
+            var lineVector = points[1] - points[0];
+            var plane = Plane.CreateByThreePoints(points[0], points[1], points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet));
+            var normal = plane.Normal.Normalize();
+
+
+            ReferencePoint refPointUp1 = document.GetElement(placePointIds[2]) as ReferencePoint;
+            refPointUp1.Position = points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet);
+
+            ReferencePoint refPointRight1 = document.GetElement(placePointIds[3]) as ReferencePoint;
+            refPointRight1.Position = points[0] + normal * 10000 * Constants.MillimeterToFeet;
+
+
+            ReferencePoint refPointUp2 = document.GetElement(placePointIds[4]) as ReferencePoint;
+            refPointUp2.Position = points[1] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet);
+
+            ReferencePoint refPointRight2 = document.GetElement(placePointIds[5]) as ReferencePoint;
+            refPointRight2.Position = points[1] + normal * 10000 * Constants.MillimeterToFeet;
+
+
+            return instance;
+        }
+
+
+
 
     }
 }
