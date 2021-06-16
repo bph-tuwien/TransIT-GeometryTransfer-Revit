@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TransITGeometryTransferRevit
 {
-    class TemplateFamiliesBase64
+    /// <summary>
+    /// The class containing Revit family templates
+    /// </summary>
+    public class TemplateFamiliesBase64
     {
         /// <summary>
         /// Tunnel profile template family containing 3 adaptive points to define orientation plane.

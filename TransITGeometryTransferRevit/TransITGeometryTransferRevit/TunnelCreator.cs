@@ -20,7 +20,7 @@ namespace TransITGeometryTransferRevit
     /// <summary>
     /// The class containing methods to generate the family based tunnel.
     /// </summary>
-    class TunnelCreator
+    public class TunnelCreator
     {
         /// <summary>
         /// Creates a Generic Model family based on the given IfcRepresentationItem that represents the profile of the

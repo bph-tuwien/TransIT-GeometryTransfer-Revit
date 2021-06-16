@@ -17,6 +17,10 @@ using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
 namespace TransITGeometryTransferRevit
 {
+
+    /// <summary>
+    /// The class containing the callable Revit commands.
+    /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class Main : IExternalCommand
