@@ -101,12 +101,13 @@ namespace TransITGeometryTransferRevit
         }
 
         /// <summary>
-        /// TODO
+        /// Creates a Generic Model family based on the given IfcRepresentationItem that represents the profile of the
+        /// tunnel.
         /// </summary>
-        /// <param name="commandData"></param>
-        /// <param name="profileIfcRepresentationItem"></param>
-        /// <returns></returns>
-        public string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcRepresentationItem profileIfcRepresentationItem)
+        /// <param name="commandData">ExternalCommandData of the Revit plugin execution</param>
+        /// <param name="ifcProfileCurve">The curve representing the tunnel's profile</param>
+        /// <returns>The path to the generated profile family</returns>
+        public static string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcIndexedPolyCurve ifcProfileCurve)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -132,65 +133,32 @@ namespace TransITGeometryTransferRevit
             {
                 revitTransaction.Start();
 
-                var ifcProfileCurve = profileIfcRepresentationItem as IfcIndexedPolyCurve;
-                var revitProfile = ifcProfileCurve.ToCurve();
-                //var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
-                var offsetCurve = ifcProfileCurve.ToCurve(Constants.MeterToFeet);
-
-
-
                 IfcCartesianPointList3D pointList = ifcProfileCurve.Points as IfcCartesianPointList3D;
                 var coordList = pointList.CoordList;
 
 
+                var revitCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet);
 
-                //var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet, -revitProfile.GetEndPoint(0) * Constants.MeterToFeet);
-                var offsetCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet);
-
-                var curveArrayProfile = new CurveArray();
-                curveArrayProfile.Append(offsetCurve);
-
-
-                // https://forums.autodesk.com/t5/revit-api-forum/3d-model-line/td-p/5961937
-
-                //var plane =  Plane.CreateByThreePoints(_countour[0], _countour[1], _countour[2]);
-                // TODO: Fix this can be colinear
-
-                var asd = curveArrayProfile.get_Item(0).Tessellate();
-
-
-                //var asd2 = curveArrayProfile.get_Item(0).
-                // TODO: Fix this
-                //var plane =  Plane.CreateByThreePoints(asd[0], asd[100], asd[200]);
-                var nurb = offsetCurve as NurbSpline;
 
                 var nonColinearPoints = GetThreeNonColinearPoints(coordList.ToXYZArray());
-
                 var plane = Plane.CreateByThreePoints(nonColinearPoints[0], nonColinearPoints[1], nonColinearPoints[2]);
-
-
                 SketchPlane skp = SketchPlane.Create(fdoc, plane);
-                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(offsetCurveArray, skp);
+                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(revitCurveArray, skp);
 
 
-
-                //fdoc.get_Parameter(BuiltInParameter.FAMILY_WORK_PLANE_BASED).Set(0);
                 fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_WORK_PLANE_BASED).Set(1);
                 fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_SHARED).Set(1);
                 fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_ALWAYS_VERTICAL).Set(0);
 
 
-
                 revitTransaction.Commit();
             }
 
-            string filename = Path.Combine(Path.GetTempPath(), _family_name + _rfa_ext);
+            string filename = Path.Combine(Path.GetTempPath(), "TunnelProfile.rfa");
 
             SaveAsOptions opt = new SaveAsOptions();
             opt.OverwriteExistingFile = true;
-
             fdoc.SaveAs(filename, opt);
-
             fdoc.Close(false);
 
             return filename;
@@ -330,7 +298,7 @@ namespace TransITGeometryTransferRevit
                         throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
                     }
 
-                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0]);
+                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0] as IfcIndexedPolyCurve);
 
                 }
             }
