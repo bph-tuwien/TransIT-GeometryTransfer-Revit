@@ -3,16 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB.Structure;
 
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Kernel;
-using Xbim.Ifc4.RepresentationResource;
 using Xbim.Ifc4.GeometricModelResource;
 
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
@@ -20,10 +17,11 @@ using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
 namespace TransITGeometryTransferRevit
 {
+    /// <summary>
+    /// The class containing methods to generate the family based tunnel.
+    /// </summary>
     class TunnelCreator
     {
-
-
         /// <summary>
         /// Creates a Generic Model family based on the given IfcRepresentationItem that represents the profile of the
         /// tunnel.
@@ -31,7 +29,8 @@ namespace TransITGeometryTransferRevit
         /// <param name="commandData">ExternalCommandData of the Revit plugin execution</param>
         /// <param name="ifcProfileCurve">The curve representing the tunnel's profile</param>
         /// <returns>The path to the generated profile family</returns>
-        public static string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcIndexedPolyCurve ifcProfileCurve)
+        public static string CreateTunnelProfileFamily(ExternalCommandData commandData, 
+                                                       IfcIndexedPolyCurve ifcProfileCurve)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -87,8 +86,6 @@ namespace TransITGeometryTransferRevit
 
             return filename;
         }
-
-
 
         /// <summary>
         /// Finds 3 non-colinear points in a list of points. Throws exception if such points could not be found.
@@ -248,7 +245,8 @@ namespace TransITGeometryTransferRevit
             // REPLACE THIS WITH IMPORTED ORIENTATION DATA
 
             var lineVector = points[1] - points[0];
-            var plane = Plane.CreateByThreePoints(points[0], points[1], points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet));
+            var plane = Plane.CreateByThreePoints(points[0], points[1], 
+                                                  points[0] + new XYZ(0, 0, 10000 * Constants.MillimeterToFeet));
             var normal = plane.Normal.Normalize();
 
 
@@ -268,9 +266,6 @@ namespace TransITGeometryTransferRevit
 
             return instance;
         }
-
-
-
 
     }
 }

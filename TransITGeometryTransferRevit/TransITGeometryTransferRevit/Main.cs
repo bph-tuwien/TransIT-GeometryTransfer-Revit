@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB.Structure;
 
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Kernel;
 using Xbim.Ifc4.RepresentationResource;
-using Xbim.Ifc4.GeometricModelResource;
 
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
@@ -25,9 +22,8 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
 
-
         /// <summary>
-        /// Testing family scripting and creation
+        /// Entry point of the family based tunnel import and generation plugin. 
         /// </summary>
         /// <param name="commandData"></param>
         /// <param name="message"></param>
@@ -84,7 +80,8 @@ namespace TransITGeometryTransferRevit
                         throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
                     }
 
-                    tunnelProfileFamilyPath = TunnelCreator.CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0] as IfcIndexedPolyCurve);
+                    var ifcTunnelLine = referenceRepresentation.Items[0] as IfcIndexedPolyCurve;
+                    tunnelProfileFamilyPath = TunnelCreator.CreateTunnelProfileFamily(commandData, ifcTunnelLine);
 
                 }
             }
@@ -112,9 +109,6 @@ namespace TransITGeometryTransferRevit
 
                 revitTransaction.Commit();
             }
-
-
-
 
 
             // ####################################################################
@@ -165,16 +159,19 @@ namespace TransITGeometryTransferRevit
                         IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
 
                         Curve tempTunnelLine = ifcTunnelLine.ToCurve();
-                        revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet, -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+                        revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
+                                                                -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
                         // TODO: Change it to 1 meter
-                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 10.0 * Constants.MeterToFeet);
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 1.0 *
+                                                                                          Constants.MeterToFeet);
 
                     }
                 }
 
                 revitTransaction.Commit();
             }
+
 
             // ########################################################
             // LOADING, INSTATIATING, AND SETTING TUNNEL SECTION FAMILY
@@ -184,10 +181,11 @@ namespace TransITGeometryTransferRevit
             {
                 revitTransaction.Start();
 
-                var tunnelSectionTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(TemplateFamiliesBase64.tunnelSectionFamilyTemplateBase64);
+                var tunnelSectionTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(
+                                                            TemplateFamiliesBase64.tunnelSectionFamilyTemplateBase64);
 
-
-                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelSectionTemplateFamilyPath, "TunnelSectionFamily");
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelSectionTemplateFamilyPath,
+                                                                  "TunnelSectionFamily");
                 family.Name = "TunnelSectionFamily";
                 FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
                 symbol.Name = "TunnelSectionFamily";
@@ -197,7 +195,8 @@ namespace TransITGeometryTransferRevit
 
                 for (int i = 1; i < pointsOnTunnelLine.Length; i++)
                 {
-                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] });
+                    var sectionPoints = new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] };
+                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, sectionPoints);
 
                     Parameter myparam = instance.LookupParameter("Profile");
                     myparam.Set(tunnelProfileFamilySymbolId);
@@ -211,7 +210,6 @@ namespace TransITGeometryTransferRevit
             return Result.Succeeded;
 
         }
-
 
         /// <summary>
         /// The entry point of the plugin. 
@@ -428,8 +426,6 @@ namespace TransITGeometryTransferRevit
 
 
         }
-
-
 
         [Obsolete("Testing out how Revit transactions work")]
         public Result ExecuteWallTest(ExternalCommandData commandData, ref string message, ElementSet elements)

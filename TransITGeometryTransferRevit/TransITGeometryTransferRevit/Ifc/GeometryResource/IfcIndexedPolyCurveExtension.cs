@@ -45,7 +45,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
         /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns a new NurbSpline Curve based on the poly curve</returns>
-        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+        public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve,
+                                    double unitConversion = Constants.Identity,
                                     XYZ offset = null)
         {
             if (offset == null)
@@ -77,7 +78,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
         /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns a new CurveArray based on the poly curve</returns>
-        public static CurveArray ToCurveArray(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+        public static CurveArray ToCurveArray(this IfcIndexedPolyCurve ifcIndexedPolyCurve,
+                                              double unitConversion = Constants.Identity,
                                               XYZ offset = null)
         {
             if (offset == null)
@@ -115,7 +117,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
         /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns a Closed CurveLoop based on the poly curve</returns>
-        public static CurveLoop ToCurveLoop(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
+        public static CurveLoop ToCurveLoop(this IfcIndexedPolyCurve ifcIndexedPolyCurve,
+                                            double unitConversion = Constants.Identity,
                                             XYZ offset = null)
         {
             if (offset == null)
@@ -221,8 +224,11 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
                 }
 
 
-                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]) * unitConversion + offset;
-                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) * unitConversion + offset;
+                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2])
+                                            * unitConversion + offset;
+
+                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) 
+                                            * unitConversion + offset;
 
                 if ((startPoint - endPoint).IsZeroLength())
                 {
@@ -248,9 +254,14 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
                     return null;
                 }
 
-                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2]) * unitConversion + offset;
-                var onArcPoint = new XYZ(coordList[onArcIndex][0], coordList[onArcIndex][1], coordList[onArcIndex][2]) * unitConversion + offset;
-                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2]) * unitConversion + offset;
+                var startPoint = new XYZ(coordList[startIndex][0], coordList[startIndex][1], coordList[startIndex][2])
+                                                * unitConversion + offset;
+
+                var onArcPoint = new XYZ(coordList[onArcIndex][0], coordList[onArcIndex][1], coordList[onArcIndex][2]) 
+                                                * unitConversion + offset;
+
+                var endPoint = new XYZ(coordList[endIndex][0], coordList[endIndex][1], coordList[endIndex][2])
+                                                * unitConversion + offset;
 
                 return Arc.Create(startPoint, endPoint, onArcPoint);
 
@@ -258,7 +269,7 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
 
             return null;
 
-            // TODO: Do the rest of the types
+            // TODO: Do the rest of the type of lines
 
         }
 
