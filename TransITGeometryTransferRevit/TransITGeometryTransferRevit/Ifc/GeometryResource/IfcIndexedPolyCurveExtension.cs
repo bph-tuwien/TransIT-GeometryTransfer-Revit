@@ -42,6 +42,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// Recreates an IfcIndexedPolyCurve as a Revit (NurbSpline) Curve.
         /// </summary>
         /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
+        /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
+        /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns a new NurbSpline Curve based on the poly curve</returns>
         public static Curve ToCurve(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
                                     XYZ offset = null)
@@ -68,6 +70,13 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
             return pathCurve;
         }
 
+        /// <summary>
+        /// Recreates an IfcIndexedPolyCurve as a Revit CurveArray.
+        /// </summary>
+        /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
+        /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
+        /// <param name="offset">The applied offset during curve creation</param>
+        /// <returns>Returns a new CurveArray based on the poly curve</returns>
         public static CurveArray ToCurveArray(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
                                               XYZ offset = null)
         {
@@ -95,7 +104,7 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
             return curveArray;
         }
 
-        
+
 
         /// <summary>
         /// Recreates an IfcIndexedPolyCurve as a Revit CurveLoop. If the given curve is not closed, the new CurveLoop
@@ -103,6 +112,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// end of the polycurve is removed. Invalid segments by the point removal is also removed.
         /// </summary>
         /// <param name="ifcIndexedPolyCurve">The given curve to convert</param>
+        /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
+        /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns a Closed CurveLoop based on the poly curve</returns>
         public static CurveLoop ToCurveLoop(this IfcIndexedPolyCurve ifcIndexedPolyCurve, double unitConversion = Constants.Identity,
                                             XYZ offset = null)
@@ -151,7 +162,6 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// <returns>Returns the coordinate as a Revit XYZ coordinate</returns>
         private static XYZ ToXYZ(this IItemSet<IfcLengthMeasure> coord)
         {
-            // TODO: Length check
             if (coord.Count != 3)
             {
                 throw new ArgumentOutOfRangeException("The given coordinate does not contain exactly 3 components.");
@@ -159,6 +169,11 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
             return new XYZ(coord[0], coord[1], coord[2]);
         }
 
+        /// <summary>
+        /// Converts an Ifc 3d point list to a Revit XYZ Array
+        /// </summary>
+        /// <param name="coordList"></param>
+        /// <returns>An XYZ Array containing the Ifc point list's values</returns>
         public static XYZ[] ToXYZArray(this IItemSet<IItemSet<IfcLengthMeasure>> coordList)
         {
             var array = new List<XYZ>();
@@ -177,6 +192,8 @@ namespace TransITGeometryTransferRevit.Ifc.GeometryResource
         /// </summary>
         /// <param name="segment">The given segment containing the indices</param>
         /// <param name="coordList">All the coordinates in the containing curve, not just the segment's coordinates</param>
+        /// <param name="unitConversion">The applied unit conversion multiplier during curve creation</param>
+        /// <param name="offset">The applied offset during curve creation</param>
         /// <returns>Returns the segment as a Revit Curve, either Line or Arc</returns>
         private static Curve ToCurve(this IfcSegmentIndexSelect segment, IItemSet<IItemSet<IfcLengthMeasure>> coordList,
                                      double unitConversion = Constants.Identity, XYZ offset = null)

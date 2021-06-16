@@ -176,9 +176,9 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Commit();
             }
 
-            // ####################################################################
-            // asdINTS ON THE LINE
-            // ####################################################################
+            // ########################################################
+            // LOADING, INSTATIATING, AND SETTING TUNNEL SECTION FAMILY
+            // ########################################################
 
             revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
             {
@@ -208,24 +208,9 @@ namespace TransITGeometryTransferRevit
             }
 
 
-
-
             return Result.Succeeded;
 
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         /// <summary>
