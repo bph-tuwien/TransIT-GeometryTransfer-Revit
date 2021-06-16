@@ -165,6 +165,59 @@ namespace TransITGeometryTransferRevit
             return false;
         }
 
+        /// <summary>
+        /// Finds the Tunnel IfcProduct in the Ifc model based on it's name.
+        /// </summary>
+        /// <param name="ifcModel"></param>
+        /// <returns>The Tunnel IfcProduct or null if could not be found</returns>
+        public static IfcProduct GetTunnelIfcProduct(IfcStore ifcModel)
+        {
+            var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
+
+            foreach (var obj in ifcObjects)
+            {
+                if (obj.Name == "Tunnel")
+                {
+                    return obj;
+                }
+
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Calculates a point list of equidistant points on the given curve by the given step size.
+        /// </summary>
+        /// <param name="curve">The curve to calculate points on</param>
+        /// <param name="stepSize">The distance between points</param>
+        /// <returns></returns>
+        public static XYZ[] CreateEquiDistantPointsOnCurve(Curve curve, double stepSize)
+        {
+            IList<XYZ> tessellation = curve.Tessellate();
+
+            List<XYZ> pts = new List<XYZ>(1);
+            double dist = 0.0;
+
+            XYZ p = curve.GetEndPoint(0);
+            pts.Add(p);
+
+            foreach (XYZ q in tessellation)
+            {
+                dist += p.DistanceTo(q);
+
+                if (dist >= stepSize)
+                {
+                    pts.Add(q);
+                    dist = 0;
+                }
+                p = q;
+            }
+
+            return pts.ToArray();
+        }
+
+
 
     }
 }

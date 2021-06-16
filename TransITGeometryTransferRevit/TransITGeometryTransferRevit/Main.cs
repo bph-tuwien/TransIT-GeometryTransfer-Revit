@@ -25,35 +25,6 @@ namespace TransITGeometryTransferRevit
     public class Main : IExternalCommand
     {
 
-        
-
-        
-
-
-        
-
-        /// <summary>
-        /// Finds the Tunnel IfcProduct in the Ifc model based on it's name.
-        /// </summary>
-        /// <param name="ifcModel"></param>
-        /// <returns>The Tunnel IfcProduct or null if could not be found</returns>
-        public static IfcProduct GetTunnelIfcProduct(IfcStore ifcModel)
-        {
-            var ifcObjects = ifcModel.Instances.OfType<IfcProduct>();
-
-            foreach (var obj in ifcObjects)
-            {
-                if (obj.Name == "Tunnel")
-                {
-                    return obj;
-                }
-                
-            }
-
-            return null;
-        }
-
-
 
         /// <summary>
         /// Testing family scripting and creation
@@ -84,7 +55,7 @@ namespace TransITGeometryTransferRevit
             {
                 using (var ifcTransaction = ifcModel.BeginTransaction("Parsing Tunnel to recreate Profile as a Revit Family"))
                 {
-                    var ifcTunnel = GetTunnelIfcProduct(ifcModel);
+                    var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(ifcModel);
 
                     if (ifcTunnel == null)
                     {
@@ -221,8 +192,8 @@ namespace TransITGeometryTransferRevit
 
 
 
-
-                            pts = CreateEquiDistantPointsOnCurve(revitTunnelLine1);
+                            // TODO: Change it to 1 meter
+                            pts = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine1, 10.0 * Constants.MeterToFeet);
 
 
                            
@@ -378,45 +349,6 @@ namespace TransITGeometryTransferRevit
         }
 
 
-
-        public static XYZ[] CreateEquiDistantPointsOnCurve(Curve curve)
-        {
-
-            IList<XYZ> tessellation = curve.Tessellate();
-
-            // Create a list of equi-distant points.
-
-            List<XYZ> pts = new List<XYZ>(1);
-
-            // TODO: Change it back to original
-            //double stepsize = 1.0 * Constants.MeterToFeet;
-            double stepsize = 10.0 * Constants.MeterToFeet;
-            double dist = 0.0;
-
-            XYZ p = curve.GetEndPoint(0);
-
-            foreach (XYZ q in tessellation)
-            {
-                if (0 == pts.Count)
-                {
-                    pts.Add(p);
-                    dist = 0.0;
-                }
-                else
-                {
-                    dist += p.DistanceTo(q);
-
-                    if (dist >= stepsize)
-                    {
-                        pts.Add(q);
-                        dist = 0;
-                    }
-                    p = q;
-                }
-            }
-
-            return pts.ToArray();
-        }
 
 
 
