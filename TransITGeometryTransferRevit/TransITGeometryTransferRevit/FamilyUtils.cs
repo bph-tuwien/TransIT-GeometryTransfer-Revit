@@ -47,5 +47,21 @@ namespace TransITGeometryTransferRevit
             return family;
         }
 
+        /// <summary>
+        /// Returns the first family symbol of a family
+        /// </summary>
+        /// <param name="family"></param>
+        /// <returns>The first family symbol of the given family</returns>
+        public static FamilySymbol GetFirstFamilySymbol(Family family)
+        {
+            ISet<ElementId> familySymbolIds = family.GetFamilySymbolIds();
+
+            ElementId id = familySymbolIds.First();
+            FamilySymbol familySymbol = family.Document.GetElement(id) as FamilySymbol;
+
+
+            return familySymbol;
+        }
+
     }
 }

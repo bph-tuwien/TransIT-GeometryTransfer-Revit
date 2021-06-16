@@ -27,142 +27,10 @@ namespace TransITGeometryTransferRevit
 
         
 
-        private FamilySymbol GetFirstFamilySymbol(Family family)
-        {
-            FamilySymbol symbol = null;
-
-            ISet<ElementId> familySymbolIds = family.GetFamilySymbolIds();
-
-            // Get family symbols which is contained in this family
-            foreach (ElementId id in familySymbolIds)
-            {
-                FamilySymbol familySymbol = family.Document.GetElement(id) as FamilySymbol;
-
-                symbol = familySymbol;
-
-                // TODO: Debug this context
-                break;
-            }
-
-            return symbol;
-        }
-
-        /// <summary>
-        /// Creates a Generic Model family based on the given IfcRepresentationItem that represents the profile of the
-        /// tunnel.
-        /// </summary>
-        /// <param name="commandData">ExternalCommandData of the Revit plugin execution</param>
-        /// <param name="ifcProfileCurve">The curve representing the tunnel's profile</param>
-        /// <returns>The path to the generated profile family</returns>
-        public static string CreateTunnelProfileFamily(ExternalCommandData commandData, IfcIndexedPolyCurve ifcProfileCurve)
-        {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
-            Document doc = uidoc.Document;
-
-
-            if (null == doc)
-            {
-                throw new ArgumentNullException("Current document is null");
-            }
-
-            var profileTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(TemplateFamiliesBase64.profileFamilyTemplateBase64);
-            Document fdoc = app.OpenDocumentFile(profileTemplateFamilyPath);
-
-            if (null == fdoc)
-            {
-                throw new ArgumentNullException("Cannot open template family document");
-            }
-
-
-            Transaction revitTransaction = new Transaction(fdoc, "Creating tunnel profile family");
-            {
-                revitTransaction.Start();
-
-                IfcCartesianPointList3D pointList = ifcProfileCurve.Points as IfcCartesianPointList3D;
-                var coordList = pointList.CoordList;
-
-
-                var revitCurveArray = ifcProfileCurve.ToCurveArray(Constants.MeterToFeet);
-
-
-                var nonColinearPoints = GetThreeNonColinearPoints(coordList.ToXYZArray());
-                var plane = Plane.CreateByThreePoints(nonColinearPoints[0], nonColinearPoints[1], nonColinearPoints[2]);
-                SketchPlane skp = SketchPlane.Create(fdoc, plane);
-                ModelCurveArray mc = fdoc.FamilyCreate.NewModelCurveArray(revitCurveArray, skp);
-
-
-                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_WORK_PLANE_BASED).Set(1);
-                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_SHARED).Set(1);
-                fdoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_ALWAYS_VERTICAL).Set(0);
-
-
-                revitTransaction.Commit();
-            }
-
-            string filename = Path.Combine(Path.GetTempPath(), "TunnelProfile.rfa");
-
-            SaveAsOptions opt = new SaveAsOptions();
-            opt.OverwriteExistingFile = true;
-            fdoc.SaveAs(filename, opt);
-            fdoc.Close(false);
-
-            return filename;
-        }
-
         
 
-        public static XYZ[] GetThreeNonColinearPoints(XYZ[] coordList)
-        {
-            // TODO: Check if length is > 3
 
-            for (int i = 0; i < coordList.Length; i++)
-            {
-                for (int j = i+1; j < coordList.Length; j++)
-                {
-                    for (int k = j+1; k < coordList.Length; k++)
-                    {
-                        var points = new XYZ[] { coordList[i], coordList[j], coordList[k] };
-                        if (!IsColinear(points))
-                        {
-                            return points;
-                        }
-                    }
-                }
-            }
-
-            throw new ArgumentException("Provided coordlist is fully colinear");
-        }
-
-        public static bool IsColinear(XYZ[] points)
-        {
-            // TODO: Check Lenght == 3
-            return IsColinear(points[0], points[1], points[2]);
-        }
-
-        public static bool IsColinear(XYZ p1, XYZ p2, XYZ p3)
-        {
-            var d1 = (p1 - p2).GetLength();
-            var d2 = (p1 - p3).GetLength();
-            var d3 = (p2 - p3).GetLength();
-
-            if (d1 + d2 <= d3)
-            {
-                return true;
-            }
-            if (d1 + d3 <= d2)
-            {
-                return true;
-            }
-            if (d2 + d3 <= d1)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
+        
 
         /// <summary>
         /// Finds the Tunnel IfcProduct in the Ifc model based on it's name.
@@ -245,7 +113,7 @@ namespace TransITGeometryTransferRevit
                         throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
                     }
 
-                    tunnelProfileFamilyPath = CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0] as IfcIndexedPolyCurve);
+                    tunnelProfileFamilyPath = TunnelCreator.CreateTunnelProfileFamily(commandData, referenceRepresentation.Items[0] as IfcIndexedPolyCurve);
 
                 }
             }
@@ -272,7 +140,7 @@ namespace TransITGeometryTransferRevit
                 Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
 
 
-                FamilySymbol symbol = GetFirstFamilySymbol(family);
+                FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
 
                 // Make sure to activate symbol
                 if (!symbol.IsActive)
@@ -409,7 +277,7 @@ namespace TransITGeometryTransferRevit
                 Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, "Y:/RevitTunnel/TunnelSection/TunnelSectionFamily.rfa", "TunnelSectionFamily");
 
 
-                FamilySymbol symbol = GetFirstFamilySymbol(family);
+                FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
 
                 // Make sure to activate symbol
                 if (!symbol.IsActive)
