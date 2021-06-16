@@ -5,6 +5,7 @@ using System.IO;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.ApplicationServices;
 
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometryResource;
@@ -16,10 +17,203 @@ using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
 namespace TransITGeometryTransferRevit
 {
+
+    /// <summary>
+    /// The class containing the callable Revit commands.
+    /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class Main : IExternalCommand
     {
+
+        /// <summary>
+        /// Entry point of the family based tunnel import and generation plugin. 
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="message"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+            string tunnelProfileFamilyPath = null;
+
+
+            var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
+            FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
+
+
+            // #################################################################################
+            // CREATING TUNNEL PROFILE FAMILY BASED ON THE IFC TUNNEL'S REFERENCE REPRESENTATION
+            // #################################################################################
+
+            using (var ifcModel = IfcStore.Open(ifcFileInfo.FullName))
+            {
+                using (var ifcTransaction = ifcModel.BeginTransaction("Parsing Tunnel to recreate Profile as a Revit Family"))
+                {
+                    var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(ifcModel);
+
+                    if (ifcTunnel == null)
+                    {
+                        throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
+                    }
+
+                    var representations = ifcTunnel.Representation.Representations;
+
+                    IfcRepresentation referenceRepresentation = null;
+
+                    foreach (var representation in representations)
+                    {
+                        if (representation.RepresentationIdentifier == "Reference")
+                        {
+                            referenceRepresentation = representation;
+                        }
+                    }
+
+                    if (referenceRepresentation == null)
+                    {
+                        throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                    }
+
+                    if (referenceRepresentation.Items.Count == 0)
+                    {
+                        throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                    }
+
+                    var ifcTunnelLine = referenceRepresentation.Items[0] as IfcIndexedPolyCurve;
+                    tunnelProfileFamilyPath = TunnelCreator.CreateTunnelProfileFamily(commandData, ifcTunnelLine);
+
+                }
+            }
+
+
+            // #######################################
+            // LOADING GENERATED TUNNEL PROFILE FAMILY
+            // #######################################
+
+            ElementId tunnelProfileFamilySymbolId = null;
+
+            var revitTransaction = new Transaction(doc, "Loading tunnel profile family");
+            {
+                revitTransaction.Start();
+
+
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
+                FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
+
+                if (!symbol.IsActive)
+                { symbol.Activate(); doc.Regenerate(); }
+
+                tunnelProfileFamilySymbolId = symbol.Id;
+
+
+                revitTransaction.Commit();
+            }
+
+
+            // ####################################################################
+            // IMPORTING TUNNEL LINE AND CALCULATING EQUIDISTANT POINTS ON THE LINE
+            // ####################################################################
+
+            XYZ[] pointsOnTunnelLine = new XYZ[0];
+            Curve revitTunnelLine = null;
+
+            revitTransaction = new Transaction(doc);
+            {
+                revitTransaction.Start("Importing 3d tunnel");
+
+
+                using (var model = IfcStore.Open(ifcFileInfo.FullName))
+                {
+                    using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                    {
+                        var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(model);
+
+                        if (ifcTunnel == null)
+                        {
+                            throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
+                        }
+
+                        var representations = ifcTunnel.Representation.Representations;
+
+                        IfcRepresentation axisRepresentation = null;
+
+                        foreach (var representation in representations)
+                        {
+                            if (representation.RepresentationIdentifier == "Axis")
+                            {
+                                axisRepresentation = representation;
+                            }
+                        }
+
+                        if (axisRepresentation == null)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                        }
+
+                        if (axisRepresentation.Items.Count == 0)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                        }
+
+                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                        Curve tempTunnelLine = ifcTunnelLine.ToCurve();
+                        revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
+                                                                -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+
+                        // TODO: Change it to 1 meter
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 1.0 *
+                                                                                          Constants.MeterToFeet);
+
+                    }
+                }
+
+                revitTransaction.Commit();
+            }
+
+
+            // ########################################################
+            // LOADING, INSTATIATING, AND SETTING TUNNEL SECTION FAMILY
+            // ########################################################
+
+            revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
+            {
+                revitTransaction.Start();
+
+                var tunnelSectionTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(
+                                                            TemplateFamiliesBase64.tunnelSectionFamilyTemplateBase64);
+
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelSectionTemplateFamilyPath,
+                                                                  "TunnelSectionFamily");
+                family.Name = "TunnelSectionFamily";
+                FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
+                symbol.Name = "TunnelSectionFamily";
+
+                if (!symbol.IsActive)
+                { symbol.Activate(); doc.Regenerate(); }
+
+                for (int i = 1; i < pointsOnTunnelLine.Length; i++)
+                {
+                    var sectionPoints = new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] };
+                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, sectionPoints);
+
+                    Parameter myparam = instance.LookupParameter("Profile");
+                    myparam.Set(tunnelProfileFamilySymbolId);
+
+                }
+
+                revitTransaction.Commit();
+            }
+
+
+            return Result.Succeeded;
+
+        }
 
         /// <summary>
         /// The entry point of the plugin. 
@@ -28,7 +222,7 @@ namespace TransITGeometryTransferRevit
         /// <param name="message"></param>
         /// <param name="elements"></param>
         /// <returns></returns>
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result ExecuteGeometryImportRaw(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Document document = commandData.Application.ActiveUIDocument.Document;
 
@@ -236,8 +430,6 @@ namespace TransITGeometryTransferRevit
 
 
         }
-
-
 
         [Obsolete("Testing out how Revit transactions work")]
         public Result ExecuteWallTest(ExternalCommandData commandData, ref string message, ElementSet elements)

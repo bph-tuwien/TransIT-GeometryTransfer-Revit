@@ -8,7 +8,11 @@ The following steps are required to use the plugin in Revit:
     the plugin's dll built in the previous step.
  3. Copy this addin file to the following directory: `C:\ProgramData\Autodesk\Revit\Addins\2021` or similar depending on
     the given Revit version.
- 4. In Revit the plugin's command will appear under `Add-ins/External Tools`.
+ 4. Open Revit and create a new `English/Conceptual Mass/Metric Mass` family. The plugin is written in a way that it can
+    only be executed in a family document and not in a model document.
+ 5. The plugin can be executed under `Add-ins/External Tools/TransIT Geometry Transfer Revit`.
+ 6. When executed, the plugin asks for the exported tunnel IFC file. Test files can be found under the given release.
+
 
  ## Documentation and Tutorials
 
