@@ -15,7 +15,7 @@ using Xbim.Ifc4.RepresentationResource;
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
 
-namespace TransITGeometryTransferRevit
+namespace TransITGeometryTransferRevit.Commands
 {
 
     /// <summary>
@@ -23,7 +23,7 @@ namespace TransITGeometryTransferRevit
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Main : IExternalCommand
+    public class ImportAndGenerateTunnel : IExternalCommand
     {
 
         /// <summary>
@@ -167,7 +167,7 @@ namespace TransITGeometryTransferRevit
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
                         // TODO: Change it to 1 meter
-                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 1.0 *
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 10.0 *
                                                                                           Constants.MeterToFeet);
 
                     }
