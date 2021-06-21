@@ -159,11 +159,16 @@ namespace TransITGeometryTransferRevit.Commands
                         IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
 
                         Curve tempTunnelLine = ifcTunnelLine.ToCurve();
-                        var tunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
+                        var tunnelLine = ifcTunnelLine.ToCurveArray(Constants.MeterToFeet,
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
                         WireframeBuilder builder = new WireframeBuilder();
-                        builder.AddCurve(tunnelLine);
+                        
+
+                        foreach (Curve curve in tunnelLine)
+                        {
+                            builder.AddCurve(curve);
+                        }
 
                         ElementId categoryId = new ElementId(BuiltInCategory.OST_GenericModel);
 

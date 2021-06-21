@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -41,8 +42,15 @@ namespace TransITGeometryTransferRevit.Commands
             Document doc = uidoc.Document;
 
 
-            
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            collector = collector.OfClass(typeof(DirectShape));
 
+            var query = from element in collector where element.Name.StartsWith("TunnelLine") select element;
+            List<Element> result = query.ToList<Element>();
+
+            // TODO: nul check
+            DirectShape tunnelLineShape = result[0] as DirectShape;
+            var asd = tunnelLineShape.get_Geometry(new Autodesk.Revit.DB.Options());
 
             return Result.Succeeded;
 
