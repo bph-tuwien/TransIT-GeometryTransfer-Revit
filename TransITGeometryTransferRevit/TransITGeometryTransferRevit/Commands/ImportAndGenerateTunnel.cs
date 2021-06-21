@@ -114,6 +114,70 @@ namespace TransITGeometryTransferRevit.Commands
                 revitTransaction.Commit();
             }
 
+            // #########################################################
+            // IMPORTING TUNNEL LINE AND RECREATING IT AS A DIRECT SHAPE
+            // #########################################################
+
+            revitTransaction = new Transaction(doc);
+            {
+                revitTransaction.Start("Importing 3d tunnel");
+
+
+                using (var model = IfcStore.Open(ifcFileInfo.FullName))
+                {
+                    using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                    {
+                        var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(model);
+
+                        if (ifcTunnel == null)
+                        {
+                            throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
+                        }
+
+                        var representations = ifcTunnel.Representation.Representations;
+
+                        IfcRepresentation axisRepresentation = null;
+
+                        foreach (var representation in representations)
+                        {
+                            if (representation.RepresentationIdentifier == "Axis")
+                            {
+                                axisRepresentation = representation;
+                            }
+                        }
+
+                        if (axisRepresentation == null)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                        }
+
+                        if (axisRepresentation.Items.Count == 0)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                        }
+
+                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                        Curve tempTunnelLine = ifcTunnelLine.ToCurve();
+                        var tunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
+                                                                -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+
+                        WireframeBuilder builder = new WireframeBuilder();
+                        builder.AddCurve(tunnelLine);
+
+                        ElementId categoryId = new ElementId(BuiltInCategory.OST_GenericModel);
+
+                        DirectShape ds = DirectShape.CreateElement(doc, categoryId);
+
+                        ds.SetShape(builder);
+
+                        ds.Name = "TunnelLine";
+                    }
+                }
+
+                revitTransaction.Commit();
+            }
+
 
             // ####################################################################
             // IMPORTING TUNNEL LINE AND CALCULATING EQUIDISTANT POINTS ON THE LINE
