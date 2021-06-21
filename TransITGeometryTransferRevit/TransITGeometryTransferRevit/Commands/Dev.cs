@@ -50,7 +50,15 @@ namespace TransITGeometryTransferRevit.Commands
 
             // TODO: nul check
             DirectShape tunnelLineShape = result[0] as DirectShape;
-            var asd = tunnelLineShape.get_Geometry(new Autodesk.Revit.DB.Options());
+            GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
+
+            foreach(var element in tunnelLineGeometry)
+            {
+                if (element is Line line)
+                {
+
+                }
+            }
 
             return Result.Succeeded;
 
