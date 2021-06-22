@@ -11,6 +11,23 @@ namespace TransITGeometryTransferRevit
     /// </summary>
     public class FamilyUtils
     {
+        public static Document GetFamilyDocumentByName(Document doc, string familyName)
+        {
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            collector = collector.OfClass(typeof(FamilyInstance));
+
+            var query = from element in collector where element.Name.Equals(familyName) select element;
+            List<Element> result = query.ToList<Element>();
+
+
+            FamilyInstance tunnelFamilyInstance = query.First() as FamilyInstance;
+            var fam = tunnelFamilyInstance.Symbol.Family;
+            var docfamily = doc.EditFamily(fam);
+
+            return docfamily;
+        }
+
+
         /// <summary>
         /// Loads the Revit Family if it's not loaded already.
         /// </summary>
