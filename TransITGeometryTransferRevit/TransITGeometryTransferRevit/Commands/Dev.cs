@@ -49,6 +49,23 @@ namespace TransITGeometryTransferRevit.Commands
             return annotationRep;
         }
 
+        public static IfcGeometricRepresentationContext GetModelRepresentationContext(IfcStore model)
+        {
+            foreach (IfcGeometricRepresentationContext rep in model.Instances.OfType<IfcGeometricRepresentationContext>())
+            {
+                if (rep is IfcGeometricRepresentationSubContext)
+                {
+                    continue;
+                }
+
+                if (rep.ContextType != null && rep.ContextType.Value == "Model")
+                {
+                    return rep;
+                }
+            }
+            return null;
+        }
+
 
         /// <summary>
         /// Dev command class
@@ -131,6 +148,11 @@ namespace TransITGeometryTransferRevit.Commands
             using (var model = IfcStore.Open(Path.Combine(ifcExportPathFolder, ifcExportPathFilename)))
             {
 
+                // ##############
+                // ADDING TUNNEL LINE AS AXIS REPRESENTATION
+                // ###############
+
+
                 using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
                 {
                     var objects = model.Instances.OfType<IfcBuildingStorey>();
@@ -139,74 +161,21 @@ namespace TransITGeometryTransferRevit.Commands
                     var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model);
 
 
+                    var objects2 = model.Instances.OfType<IfcBuilding>();
+                    var tunnelBuilding = objects2.First();
 
-                    var curveSet = model.Instances.New<IfcGeometricCurveSet>(cs =>
+                    tunnelBuilding.Representation = model.Instances.New<IfcProductDefinitionShape>(def =>
                     {
-                        cs.Elements.Add(ifcIndexedPolyCurve);
+                        def.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                        {
+                            rep.ContextOfItems = GetModelRepresentationContext(model);
+                            rep.RepresentationIdentifier = "Axis";
+                            rep.RepresentationType = "Curve3D";
+                            rep.Items.Add(ifcIndexedPolyCurve);
+
+                        }
+                        ));
                     });
-
-
-
-
-
-
-                    var shape = model.Instances.New<IfcShapeRepresentation>();
-                    var rep = GetAnnotationRepresentationContext(model);
-                    shape.ContextOfItems = rep;
-                    shape.RepresentationType = "Annotation2D";
-                    shape.RepresentationIdentifier = "Annotation";
-                    shape.Items.Add(curveSet);
-
-                    List<IfcShapeRepresentation> representations = new List<IfcShapeRepresentation>();
-                    representations.Add(shape);
-
-
-
-
-                    var annotation = model.Instances.New<IfcAnnotation>();
-                    annotation.Name = "TunnelLine";
-                    annotation.Description = "";
-
-                    var prodDef = model.Instances.New<IfcProductDefinitionShape>();
-                    prodDef.Representations.AddRange(representations);
-                    annotation.Representation = prodDef;
-
-                    var localPlacement = model.Instances.New<IfcLocalPlacement>();
-
-                    var relativePlacement = model.Instances.New<IfcAxis2Placement3D>();
-                    var origin =  model.Instances.New<IfcCartesianPoint>(p =>
-                    {
-                        p.X = 0;
-                        p.Y = 0;
-                        p.Z = 0;
-                    });
-
-
-                    relativePlacement.Location = origin;
-                    relativePlacement.RefDirection = model.Instances.New<IfcDirection>(dir =>
-                    {
-                        dir.X = 1;
-                        dir.Y = 0;
-                        dir.Z = 0;
-                    });
-                    relativePlacement.Axis = model.Instances.New<IfcDirection>(dir =>
-                    {
-                        dir.X = 0;
-                        dir.Y = 0;
-                        dir.Z = 1;
-                    });
-
-                    localPlacement.RelativePlacement = relativePlacement;
-
-                    //Adding relPlacementto IfcBuilding
-                    var ifc_building = model.Instances.OfType<IfcBuilding>().FirstOrDefault();
-                    if (ifc_building != null)
-                    {
-                        localPlacement.PlacementRelTo = ifc_building.ObjectPlacement;
-                    }
-                    annotation.ObjectPlacement = localPlacement;
-
-
 
 
 
@@ -217,7 +186,15 @@ namespace TransITGeometryTransferRevit.Commands
                 }
 
 
-                var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+                
+
+
+
+
+
+
+
+                    var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
                 model.SaveAs(Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename));
 
             }
