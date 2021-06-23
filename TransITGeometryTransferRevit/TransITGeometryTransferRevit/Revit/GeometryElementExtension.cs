@@ -14,7 +14,7 @@ namespace TransITGeometryTransferRevit.Revit
     public static class GeometryElementExtension
     {
 
-        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model)
+        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model, Transform transform, double unitConversion)
         {
             var segments = geometryElement.ToList();
 
@@ -46,7 +46,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                 if (p0_Distance > p1_Distance)
                 {
-                    var cadPoint = firstSegment.GetEndPoint(0);
+                    var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
 
                     points.Add(new List<double>(){
                         cadPoint.X,
@@ -56,7 +56,7 @@ namespace TransITGeometryTransferRevit.Revit
                 }
                 else
                 {
-                    var cadPoint = firstSegment.GetEndPoint(1);
+                    var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(1)) * unitConversion;
 
                     points.Add(new List<double>(){
                         cadPoint.X,
@@ -68,7 +68,7 @@ namespace TransITGeometryTransferRevit.Revit
             }
             else
             {
-                var cadPoint = firstSegment.GetEndPoint(0);
+                var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
 
                 points.Add(new List<double>(){
                         cadPoint.X,
@@ -126,7 +126,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                     else if (segment is Line line)
                     {
-                        var cadPoint = line.GetEndPoint(1);
+                        var cadPoint = transform.OfPoint(line.GetEndPoint(1)) * unitConversion;
 
                         points.Add(new List<double>(){
                             cadPoint.X,

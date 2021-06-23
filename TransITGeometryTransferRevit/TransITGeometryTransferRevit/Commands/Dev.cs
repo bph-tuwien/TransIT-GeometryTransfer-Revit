@@ -86,7 +86,30 @@ namespace TransITGeometryTransferRevit.Commands
             // GETTING TUNNEL LINE STUFF
             // #############
 
-            var docfamily = FamilyUtils.GetFamilyDocumentByName(doc, "TunnelFamily");
+            //var docfamily = FamilyUtils.GetFamilyDocumentByName(doc, "TunnelFamily");
+
+            FilteredElementCollector collectorTunnel = new FilteredElementCollector(doc);
+            collectorTunnel = collectorTunnel.OfClass(typeof(FamilyInstance));
+
+            var queryTunnel = from element in collectorTunnel where element.Name.Equals("TunnelFamily") select element;
+            List<Element> resultTunnel = queryTunnel.ToList<Element>();
+
+
+            FamilyInstance tunnelFamilyInstance = queryTunnel.First() as FamilyInstance;
+            var fam = tunnelFamilyInstance.Symbol.Family;
+            var docfamily = doc.EditFamily(fam);
+
+
+
+            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
+            var asdasd2 = tunnelFamilyInstance.GetTransform();
+
+
+
+
+            ;
+
+
 
 
             FilteredElementCollector collector = new FilteredElementCollector(docfamily);
@@ -99,6 +122,7 @@ namespace TransITGeometryTransferRevit.Commands
             DirectShape tunnelLineShape = result[0] as DirectShape;
             GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
 
+            //tunnelLineGeometry = tunnelLineGeometry.GetTransformed
 
             ;
 
@@ -158,7 +182,7 @@ namespace TransITGeometryTransferRevit.Commands
                     var objects = model.Instances.OfType<IfcBuildingStorey>();
                     var tunnelStorey = objects.First();
 
-                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model);
+                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform, Constants.FeetToMillimeter);
 
 
                     var objects2 = model.Instances.OfType<IfcBuilding>();
