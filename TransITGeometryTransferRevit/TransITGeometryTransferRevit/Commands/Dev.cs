@@ -20,6 +20,7 @@ using Xbim.Ifc4.ProductExtension;
 using Xbim.Ifc4.GeometricModelResource;
 using Xbim.Ifc4.GeometricConstraintResource;
 using TransITGeometryTransferRevit.Ifc.RepresentationResource;
+using Xbim.Ifc4.SharedBldgElements;
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -102,7 +103,6 @@ namespace TransITGeometryTransferRevit.Commands
 
 
             var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
-            var asdasd2 = tunnelFamilyInstance.GetTransform();
 
 
 
@@ -210,15 +210,79 @@ namespace TransITGeometryTransferRevit.Commands
                 }
 
 
+                // ##############
+                // REPLACING MAPPED BREP TUNNEL SECTION GEOMETRIES
+                // ###############
+
+
+                FilteredElementCollector collectorTunnelSection = new FilteredElementCollector(doc);
+                collectorTunnelSection = collectorTunnelSection.OfClass(typeof(FamilyInstance));
+
+                var queryTunnelSection = from element in collectorTunnelSection where element.Name.StartsWith("TunnelSection") select element;
+                List<Element> resultTunnelSection = queryTunnelSection.ToList<Element>();
+
+
                 
 
+                ;
+
+
+                using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                {
+                    var objects = model.Instances.OfType<IfcBuildingElementProxy>();
+
+
+                    foreach (var tunnelSection in queryTunnelSection)
+                    { 
+
+                        foreach (var buildingElementProxy in objects)
+                        {
+
+                            if (buildingElementProxy.Name.ToString().EndsWith(tunnelSection.Id.ToString()))
+                            {
+                                
+                                
+
+                                ;
+
+                                FilteredElementCollector collectorTunnelSection2 = new FilteredElementCollector(doc);
+                                collectorTunnelSection2 = collectorTunnelSection2.OfClass(typeof(FamilyInstance));
+
+                                foreach (FamilyInstance tunnelPart in collectorTunnelSection2)
+                                {
+
+                                    if (tunnelPart.SuperComponent != null && tunnelSection.Id.ToString() == tunnelPart.SuperComponent.Id.ToString())
+                                    {
+
+                                        ;
+
+                                    }
+
+
+                                }
+
+                            }
+
+
+                        }
+
+                    }
 
 
 
 
 
 
-                    var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+
+                    ifcTransaction.Commit();
+                }
+
+
+
+
+
+
+                var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
                 model.SaveAs(Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename));
 
             }
