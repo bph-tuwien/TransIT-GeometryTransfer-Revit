@@ -236,7 +236,7 @@ namespace TransITGeometryTransferRevit.Commands
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
                         // TODO: Change it to 1 meter
-                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 10.0 *
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 100.0 *
                                                                                           Constants.MeterToFeet);
 
                     }

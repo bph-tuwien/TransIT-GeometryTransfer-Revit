@@ -92,7 +92,7 @@ namespace TransITGeometryTransferRevit.Commands
             FilteredElementCollector collectorTunnel = new FilteredElementCollector(doc);
             collectorTunnel = collectorTunnel.OfClass(typeof(FamilyInstance));
 
-            var queryTunnel = from element in collectorTunnel where element.Name.Equals("TunnelFamily") select element;
+            var queryTunnel = from element in collectorTunnel where element.Name.StartsWith("TunnelFamily") select element;
             List<Element> resultTunnel = queryTunnel.ToList<Element>();
 
 
@@ -219,7 +219,7 @@ namespace TransITGeometryTransferRevit.Commands
                 collectorTunnelSection = collectorTunnelSection.OfClass(typeof(FamilyInstance));
 
                 var queryTunnelSection = from element in collectorTunnelSection where element.Name.StartsWith("TunnelSection") select element;
-                List<Element> resultTunnelSection = queryTunnelSection.ToList<Element>();
+                //List<Element> resultTunnelSection = queryTunnelSection.ToList<Element>();
 
 
                 
@@ -233,7 +233,9 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                     foreach (var tunnelSection in queryTunnelSection)
-                    { 
+                    {
+
+                        var tunnelSectionFamilyInstance = tunnelSection as FamilyInstance;
 
                         foreach (var buildingElementProxy in objects)
                         {
@@ -248,11 +250,70 @@ namespace TransITGeometryTransferRevit.Commands
                                 FilteredElementCollector collectorTunnelSection2 = new FilteredElementCollector(doc);
                                 collectorTunnelSection2 = collectorTunnelSection2.OfClass(typeof(FamilyInstance));
 
+                                var tunnelProfiles = new List<IfcIndexedPolyCurve>();
+
                                 foreach (FamilyInstance tunnelPart in collectorTunnelSection2)
                                 {
 
                                     if (tunnelPart.SuperComponent != null && tunnelSection.Id.ToString() == tunnelPart.SuperComponent.Id.ToString())
                                     {
+
+                                        var gjsdfjhsd = tunnelSection.GetSubelements();
+                                        var gjsdfjhsd2 = (tunnelSection as FamilyInstance).GetSubComponentIds();
+
+                                        Options gOptions = new Options();
+                                        gOptions.ComputeReferences = true;
+                                        gOptions.DetailLevel = ViewDetailLevel.Undefined;
+                                        gOptions.IncludeNonVisibleObjects = false;
+
+                                        GeometryElement geomElem = tunnelPart.get_Geometry(gOptions);
+                                        GeometryInstance geomInst = geomElem.First() as GeometryInstance;
+                                        GeometryElement gInstGeom = geomInst.GetInstanceGeometry();
+
+                                        ;
+
+                                        var tunnelProfileFamily = tunnelPart.Symbol.Family;
+                                        var tunnelProfileFamilyDocument = doc.EditFamily(tunnelProfileFamily);
+
+                                        FilteredElementCollector collectorTunnelSection3 = new FilteredElementCollector(tunnelProfileFamilyDocument);
+                                        collectorTunnelSection3 = collectorTunnelSection3.OfClass(typeof(CurveElement));
+
+                                        CurveArray profileCurveArray = new CurveArray();
+
+                                        
+
+                                        //foreach (ModelArc modelArc in collectorTunnelSection3)
+                                        //{
+                                        //    //GeometryInstance geomInst = geomElemObj as GeometryInstance;
+                                        //    //GeometryElement gInstGeom = geomInst.GetInstanceGeometry();
+
+
+                                        //    profileCurveArray.Append(modelArc.GeometryCurve);
+                                        //    ;
+                                        //}
+
+                                        foreach (var part in gInstGeom)
+                                        {
+                                            if (part is Arc arc)
+                                            {
+                                                profileCurveArray.Append(arc);
+                                            }
+                                        }
+
+
+
+                                        var tunnelPartTransfrom = tunnelPart.GetTransform();
+                                        var asdasdasd = tunnelPart.GetTotalTransform();
+                                        //var transform = tunnelSectionFamilyInstance.GetTotalTransform();
+                                        //var transform = tunnelFamilyInstanceTotalTransform * tunnelSectionFamilyInstance.GetTotalTransform() * tunnelPart.GetTotalTransform();
+                                        var transform = Transform.Identity;
+                                        //var tunnelPartTransfrom = Transform.CreateTranslation(new XYZ(10000,20000,30000));
+                                        //var tunnelPartTransfrom = Transform.CreateRotationAtPoint(new XYZ(0,0,1),45,new XYZ(0,0,0));
+
+                                        var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, transform, Constants.FeetToMillimeter);
+                                        tunnelProfiles.Add(profileIfcIndexedPolyCurve);
+
+
 
                                         ;
 
@@ -260,6 +321,28 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                                 }
+
+
+
+                                ;
+
+
+                                //buildingElementProxy
+
+                                var objects2 = model.Instances.OfType<IfcBuilding>();
+                                var tunnelBuilding = objects2.First();
+
+                                //buildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                tunnelBuilding.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                {
+                                    rep.ContextOfItems = GetModelRepresentationContext(model);
+                                    rep.RepresentationIdentifier = "Profile";
+                                    rep.RepresentationType = "Curve3D";
+                                    rep.Items.AddRange(tunnelProfiles);
+
+                                }
+                                ));
+
 
                             }
 

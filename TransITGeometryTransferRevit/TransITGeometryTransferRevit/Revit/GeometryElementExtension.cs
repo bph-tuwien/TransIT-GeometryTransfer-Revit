@@ -14,10 +14,55 @@ namespace TransITGeometryTransferRevit.Revit
     public static class GeometryElementExtension
     {
 
+        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this CurveArray curveArray, bool closed, IfcStore model, Transform transform, double unitConversion)
+        {
+            var segmentList = new List<Curve>();
+
+            foreach (Curve curve in curveArray)
+            {
+                segmentList.Add(curve);
+            }
+
+            var segments = segmentList.ToArray();
+
+            return segments.ToIfcIndexedPolyCurve(closed, model, transform, unitConversion);
+
+        }
+
         public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model, Transform transform, double unitConversion)
         {
-            var segments = geometryElement.ToList();
+            var geometryObjectList = geometryElement.ToList();
 
+            var segmentList = new List<Curve>();
+
+
+            foreach (Curve curve in geometryObjectList)
+            {
+                segmentList.Add(curve);
+            }
+
+            var segments = segmentList.ToArray();
+
+            return segments.ToIfcIndexedPolyCurve(closed, model, transform, unitConversion);
+
+        }
+
+        private static List<double> FartherPoint(List<double> measuredFrom, List<double> p0, List<double> p1)
+        {
+            // TODO: Make it work for any dimensions
+            var sd0 = Math.Pow(p0[0] - measuredFrom[0], 2) +
+                      Math.Pow(p0[1] - measuredFrom[1], 2) +
+                      Math.Pow(p0[2] - measuredFrom[2], 2);
+
+            var sd1 = Math.Pow(p1[0] - measuredFrom[0], 2) +
+                      Math.Pow(p1[1] - measuredFrom[1], 2) +
+                      Math.Pow(p1[2] - measuredFrom[2], 2);
+
+            return sd0 > sd1 ? p0 : p1;
+        }
+
+        private static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this Curve[] segments, bool closed, IfcStore model, Transform transform, double unitConversion)
+        {
 
             var points = new List<List<double>>();
             var indices = new List<List<IfcPositiveInteger>>();
@@ -25,7 +70,7 @@ namespace TransITGeometryTransferRevit.Revit
             var firstSegment = segments[0] as Curve;
 
             // Calculating the start point of the whole polyline
-            if (segments.Count > 1)
+            if (segments.Length > 1)
             {
                 var secondSegment = segments[1] as Curve;
 
@@ -89,38 +134,61 @@ namespace TransITGeometryTransferRevit.Revit
                     var segmentIndices = new List<IfcPositiveInteger>();
                     segmentIndices.Add(points.Count);
 
-                    if (segment is Arc)
+                    // TODO: Fix Arcs
+                    if (segment is Arc arc2)
                     {
-                        //var arc = segment as Arc;
-                        //var midPoint = arc.GetPointAtDist(arc.Length / 2);
+                        var cadPoint = transform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
 
-                        //var cadPoint = midPoint.TransformBy(transformMatrix);
-
-                        //points.Add(new List<double>(){
-                        //    cadPoint.X,
-                        //    cadPoint.Y,
-                        //    cadPoint.Z
-                        //});
-
-                        //segmentIndices.Add(points.Count);
-
-                        //cadPoint = segment.StartPoint.TransformBy(transformMatrix);
-
-                        //var p0 = new List<double>(){
-                        //    cadPoint.X,
-                        //    cadPoint.Y,
-                        //    cadPoint.Z
-                        //};
+                        points.Add(new List<double>(){
+                            cadPoint.X,
+                            cadPoint.Y,
+                            cadPoint.Z
+                        });
+                    }
+                    else if (segment is Arc)
+                    {
+                        var arc = segment as Arc;
 
 
-                        //cadPoint = segment.EndPoint.TransformBy(transformMatrix);
-                        //var p1 = new List<double>(){
-                        //    cadPoint.X,
-                        //    cadPoint.Y,
-                        //    cadPoint.Z
-                        //};
+                        var tessellatedArc = arc.Tessellate();
 
-                        //points.Add(IfcModelCreator.FartherPoint(points[points.Count - 2], p1, p0));
+
+                        //var midPoint = tessellatedArc[tessellatedArc.Count/2];
+                        var midPoint = tessellatedArc[1];
+
+                        var cadPoint = transform.OfPoint(midPoint) * unitConversion;
+                        var transMidPoint = cadPoint;
+
+                        points.Add(new List<double>(){
+                            cadPoint.X,
+                            cadPoint.Y,
+                            cadPoint.Z
+                        });
+
+                        segmentIndices.Add(points.Count);
+
+                        cadPoint = transform.OfPoint(segment.GetEndPoint(0)) * unitConversion;
+                        var transStartPoint = cadPoint;
+
+
+                        var p0 = new List<double>(){
+                            cadPoint.X,
+                            cadPoint.Y,
+                            cadPoint.Z
+                        };
+
+
+                        cadPoint = transform.OfPoint(segment.GetEndPoint(1)) * unitConversion;
+                        var transEndPoint = cadPoint;
+
+
+                        var p1 = new List<double>(){
+                            cadPoint.X,
+                            cadPoint.Y,
+                            cadPoint.Z
+                        };
+
+                        points.Add(FartherPoint(points[points.Count - 2], p1, p0));
 
                     }
 
