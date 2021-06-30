@@ -268,10 +268,12 @@ namespace TransITGeometryTransferRevit.Commands
 
                                         foreach (var part in gInstGeom)
                                         {
-                                            if (part is Arc arc)
+                                            if (part is Curve curve)
                                             {
-                                                profileCurveArray.Append(arc);
+                                                profileCurveArray.Append(curve);
                                             }
+
+
                                         }
 
                                         var ifcTransform = ifcBuildingElementProxy.ObjectPlacement.ToMatrix3D();
