@@ -22,6 +22,11 @@ using Xbim.Ifc4.GeometricConstraintResource;
 using TransITGeometryTransferRevit.Ifc.RepresentationResource;
 using Xbim.Ifc4.SharedBldgElements;
 
+using Xbim.Geometry.Engine.Interop;
+using Xbim.Ifc.Extensions;
+using Xbim.Ifc4.MeasureResource;
+using Xbim.Common.Geometry;
+
 namespace TransITGeometryTransferRevit.Commands
 {
 
@@ -182,7 +187,7 @@ namespace TransITGeometryTransferRevit.Commands
                     var objects = model.Instances.OfType<IfcBuildingStorey>();
                     var tunnelStorey = objects.First();
 
-                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform, Constants.FeetToMillimeter);
+                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
 
                     var objects2 = model.Instances.OfType<IfcBuilding>();
@@ -310,7 +315,12 @@ namespace TransITGeometryTransferRevit.Commands
                                         //var tunnelPartTransfrom = Transform.CreateTranslation(new XYZ(10000,20000,30000));
                                         //var tunnelPartTransfrom = Transform.CreateRotationAtPoint(new XYZ(0,0,1),45,new XYZ(0,0,0));
 
-                                        var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, transform, Constants.FeetToMillimeter);
+
+                                        var ifcTransform = buildingElementProxy.ObjectPlacement.ToMatrix3D();
+                                        ifcTransform.Invert();
+
+
+                                        var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, transform, ifcTransform, Constants.FeetToMillimeter);
                                         tunnelProfiles.Add(profileIfcIndexedPolyCurve);
 
 
@@ -332,8 +342,23 @@ namespace TransITGeometryTransferRevit.Commands
                                 var objects2 = model.Instances.OfType<IfcBuilding>();
                                 var tunnelBuilding = objects2.First();
 
-                                //buildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
-                                tunnelBuilding.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+
+
+                                //tunnelProfiles[0].
+
+                                var matrix = buildingElementProxy.ObjectPlacement.ToMatrix3D();
+                                var curve = new XbimGeometryEngine().CreateCurve(tunnelProfiles[0],null);
+
+                                //var transformedCurve = curve.Transform(matrix);
+                                XbimPoint3D point = new XbimPoint3D(1,2,3);
+
+                                var point2 = matrix.Transform(point);
+
+                                ;
+
+
+                                buildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                //tunnelBuilding.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
                                 {
                                     rep.ContextOfItems = GetModelRepresentationContext(model);
                                     rep.RepresentationIdentifier = "Profile";

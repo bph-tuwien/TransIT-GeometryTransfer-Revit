@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Xbim.Common.Geometry;
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometricModelResource;
 using Xbim.Ifc4.GeometryResource;
@@ -14,7 +15,9 @@ namespace TransITGeometryTransferRevit.Revit
     public static class GeometryElementExtension
     {
 
-        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this CurveArray curveArray, bool closed, IfcStore model, Transform transform, double unitConversion)
+        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this CurveArray curveArray, bool closed, IfcStore model,
+                                                                Transform revitTransform, XbimMatrix3D ifcTransform, 
+                                                                double unitConversion)
         {
             var segmentList = new List<Curve>();
 
@@ -25,11 +28,13 @@ namespace TransITGeometryTransferRevit.Revit
 
             var segments = segmentList.ToArray();
 
-            return segments.ToIfcIndexedPolyCurve(closed, model, transform, unitConversion);
+            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
 
         }
 
-        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model, Transform transform, double unitConversion)
+        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model,
+                                                                Transform revitTransform, XbimMatrix3D ifcTransform,
+                                                                double unitConversion)
         {
             var geometryObjectList = geometryElement.ToList();
 
@@ -43,7 +48,7 @@ namespace TransITGeometryTransferRevit.Revit
 
             var segments = segmentList.ToArray();
 
-            return segments.ToIfcIndexedPolyCurve(closed, model, transform, unitConversion);
+            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
 
         }
 
@@ -61,7 +66,9 @@ namespace TransITGeometryTransferRevit.Revit
             return sd0 > sd1 ? p0 : p1;
         }
 
-        private static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this Curve[] segments, bool closed, IfcStore model, Transform transform, double unitConversion)
+        private static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this Curve[] segments, bool closed, IfcStore model,
+                                                                Transform revitTransform, XbimMatrix3D ifcTransform,
+                                                                double unitConversion)
         {
 
             var points = new List<List<double>>();
@@ -91,7 +98,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                 if (p0_Distance > p1_Distance)
                 {
-                    var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
+                    var cadPoint = revitTransform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
 
                     points.Add(new List<double>(){
                         cadPoint.X,
@@ -101,7 +108,7 @@ namespace TransITGeometryTransferRevit.Revit
                 }
                 else
                 {
-                    var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(1)) * unitConversion;
+                    var cadPoint = revitTransform.OfPoint(firstSegment.GetEndPoint(1)) * unitConversion;
 
                     points.Add(new List<double>(){
                         cadPoint.X,
@@ -113,7 +120,7 @@ namespace TransITGeometryTransferRevit.Revit
             }
             else
             {
-                var cadPoint = transform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
+                var cadPoint = revitTransform.OfPoint(firstSegment.GetEndPoint(0)) * unitConversion;
 
                 points.Add(new List<double>(){
                         cadPoint.X,
@@ -137,7 +144,7 @@ namespace TransITGeometryTransferRevit.Revit
                     // TODO: Fix Arcs
                     if (segment is Arc arc2)
                     {
-                        var cadPoint = transform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
+                        var cadPoint = revitTransform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
 
                         points.Add(new List<double>(){
                             cadPoint.X,
@@ -156,7 +163,7 @@ namespace TransITGeometryTransferRevit.Revit
                         //var midPoint = tessellatedArc[tessellatedArc.Count/2];
                         var midPoint = tessellatedArc[1];
 
-                        var cadPoint = transform.OfPoint(midPoint) * unitConversion;
+                        var cadPoint = revitTransform.OfPoint(midPoint) * unitConversion;
                         var transMidPoint = cadPoint;
 
                         points.Add(new List<double>(){
@@ -167,7 +174,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                         segmentIndices.Add(points.Count);
 
-                        cadPoint = transform.OfPoint(segment.GetEndPoint(0)) * unitConversion;
+                        cadPoint = revitTransform.OfPoint(segment.GetEndPoint(0)) * unitConversion;
                         var transStartPoint = cadPoint;
 
 
@@ -178,7 +185,7 @@ namespace TransITGeometryTransferRevit.Revit
                         };
 
 
-                        cadPoint = transform.OfPoint(segment.GetEndPoint(1)) * unitConversion;
+                        cadPoint = revitTransform.OfPoint(segment.GetEndPoint(1)) * unitConversion;
                         var transEndPoint = cadPoint;
 
 
@@ -194,7 +201,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                     else if (segment is Line line)
                     {
-                        var cadPoint = transform.OfPoint(line.GetEndPoint(1)) * unitConversion;
+                        var cadPoint = revitTransform.OfPoint(line.GetEndPoint(1)) * unitConversion;
 
                         points.Add(new List<double>(){
                             cadPoint.X,
@@ -213,8 +220,16 @@ namespace TransITGeometryTransferRevit.Revit
                 {
                     for (int j = 0; j < points.Count; j++)
                     {
-                        var values = points[j].Select(v => new IfcLengthMeasure(v));
-                        coordinates.CoordList.GetAt(j).AddRange(values);
+                        XbimPoint3D originalPoint = new XbimPoint3D(points[j][0], points[j][1], points[j][2]);
+                        var transformedPoint = ifcTransform.Transform(originalPoint);
+
+                        coordinates.CoordList.GetAt(j).AddRange(new IfcLengthMeasure[] { transformedPoint.X,
+                                                                                         transformedPoint.Y,
+                                                                                         transformedPoint.Z});
+
+
+                        //var values = points[j].Select(v => new IfcLengthMeasure(v));
+                        //coordinates.CoordList.GetAt(j).AddRange(values);
                     };
                 });
 
