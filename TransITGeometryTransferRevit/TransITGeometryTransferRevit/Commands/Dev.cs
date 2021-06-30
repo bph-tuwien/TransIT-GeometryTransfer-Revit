@@ -216,86 +216,55 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                 // ##############
-                // REPLACING MAPPED BREP TUNNEL SECTION GEOMETRIES
+                // ADDING PROFILES AS PROFILE REPRESENTATION
                 // ###############
 
 
-                FilteredElementCollector collectorTunnelSection = new FilteredElementCollector(doc);
-                collectorTunnelSection = collectorTunnelSection.OfClass(typeof(FamilyInstance));
-
-                var queryTunnelSection = from element in collectorTunnelSection where element.Name.StartsWith("TunnelSection") select element;
-                //List<Element> resultTunnelSection = queryTunnelSection.ToList<Element>();
-
-
-                
-
-                ;
+                FilteredElementCollector collectorRevitTunnelSection = new FilteredElementCollector(doc);
+                collectorRevitTunnelSection = collectorRevitTunnelSection.OfClass(typeof(FamilyInstance));
+                var queryRevitTunnelSection = from element in collectorRevitTunnelSection where element.Name.StartsWith("TunnelSection") select element;
 
 
                 using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
                 {
-                    var objects = model.Instances.OfType<IfcBuildingElementProxy>();
+                    var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
 
 
-                    foreach (var tunnelSection in queryTunnelSection)
+                    foreach (var revitTunnelSection in queryRevitTunnelSection)
                     {
 
-                        var tunnelSectionFamilyInstance = tunnelSection as FamilyInstance;
+                        var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
 
-                        foreach (var buildingElementProxy in objects)
+                        foreach (var ifcBuildingElementProxy in ifcBuildingElementProxies)
                         {
 
-                            if (buildingElementProxy.Name.ToString().EndsWith(tunnelSection.Id.ToString()))
+                            // Matching Revit and IFC tunnel sections
+                            if (ifcBuildingElementProxy.Name.ToString().EndsWith(revitTunnelSection.Id.ToString()))
                             {
-                                
-                                
 
-                                ;
+                                FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(doc);
+                                collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
 
-                                FilteredElementCollector collectorTunnelSection2 = new FilteredElementCollector(doc);
-                                collectorTunnelSection2 = collectorTunnelSection2.OfClass(typeof(FamilyInstance));
+                                var ifcTunnelSectionProfiles = new List<IfcIndexedPolyCurve>();
 
-                                var tunnelProfiles = new List<IfcIndexedPolyCurve>();
-
-                                foreach (FamilyInstance tunnelPart in collectorTunnelSection2)
+                                foreach (FamilyInstance revitTunnelPart in collectorRevitTunnelPart)
                                 {
 
-                                    if (tunnelPart.SuperComponent != null && tunnelSection.Id.ToString() == tunnelPart.SuperComponent.Id.ToString())
+                                    if (revitTunnelPart.SuperComponent != null && revitTunnelSection.Id.ToString() == revitTunnelPart.SuperComponent.Id.ToString())
                                     {
 
-                                        var gjsdfjhsd = tunnelSection.GetSubelements();
-                                        var gjsdfjhsd2 = (tunnelSection as FamilyInstance).GetSubComponentIds();
 
                                         Options gOptions = new Options();
                                         gOptions.ComputeReferences = true;
                                         gOptions.DetailLevel = ViewDetailLevel.Undefined;
                                         gOptions.IncludeNonVisibleObjects = false;
 
-                                        GeometryElement geomElem = tunnelPart.get_Geometry(gOptions);
+                                        GeometryElement geomElem = revitTunnelPart.get_Geometry(gOptions);
                                         GeometryInstance geomInst = geomElem.First() as GeometryInstance;
                                         GeometryElement gInstGeom = geomInst.GetInstanceGeometry();
 
-                                        ;
-
-                                        var tunnelProfileFamily = tunnelPart.Symbol.Family;
-                                        var tunnelProfileFamilyDocument = doc.EditFamily(tunnelProfileFamily);
-
-                                        FilteredElementCollector collectorTunnelSection3 = new FilteredElementCollector(tunnelProfileFamilyDocument);
-                                        collectorTunnelSection3 = collectorTunnelSection3.OfClass(typeof(CurveElement));
 
                                         CurveArray profileCurveArray = new CurveArray();
-
-                                        
-
-                                        //foreach (ModelArc modelArc in collectorTunnelSection3)
-                                        //{
-                                        //    //GeometryInstance geomInst = geomElemObj as GeometryInstance;
-                                        //    //GeometryElement gInstGeom = geomInst.GetInstanceGeometry();
-
-
-                                        //    profileCurveArray.Append(modelArc.GeometryCurve);
-                                        //    ;
-                                        //}
 
                                         foreach (var part in gInstGeom)
                                         {
@@ -305,65 +274,23 @@ namespace TransITGeometryTransferRevit.Commands
                                             }
                                         }
 
-
-
-                                        var tunnelPartTransfrom = tunnelPart.GetTransform();
-                                        var asdasdasd = tunnelPart.GetTotalTransform();
-                                        //var transform = tunnelSectionFamilyInstance.GetTotalTransform();
-                                        //var transform = tunnelFamilyInstanceTotalTransform * tunnelSectionFamilyInstance.GetTotalTransform() * tunnelPart.GetTotalTransform();
-                                        var transform = Transform.Identity;
-                                        //var tunnelPartTransfrom = Transform.CreateTranslation(new XYZ(10000,20000,30000));
-                                        //var tunnelPartTransfrom = Transform.CreateRotationAtPoint(new XYZ(0,0,1),45,new XYZ(0,0,0));
-
-
-                                        var ifcTransform = buildingElementProxy.ObjectPlacement.ToMatrix3D();
+                                        var ifcTransform = ifcBuildingElementProxy.ObjectPlacement.ToMatrix3D();
                                         ifcTransform.Invert();
 
-
-                                        var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, transform, ifcTransform, Constants.FeetToMillimeter);
-                                        tunnelProfiles.Add(profileIfcIndexedPolyCurve);
-
-
-
-                                        ;
+                                        var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
+                                        ifcTunnelSectionProfiles.Add(profileIfcIndexedPolyCurve);
 
                                     }
-
 
                                 }
 
 
-
-                                ;
-
-
-                                //buildingElementProxy
-
-                                var objects2 = model.Instances.OfType<IfcBuilding>();
-                                var tunnelBuilding = objects2.First();
-
-
-
-                                //tunnelProfiles[0].
-
-                                var matrix = buildingElementProxy.ObjectPlacement.ToMatrix3D();
-                                var curve = new XbimGeometryEngine().CreateCurve(tunnelProfiles[0],null);
-
-                                //var transformedCurve = curve.Transform(matrix);
-                                XbimPoint3D point = new XbimPoint3D(1,2,3);
-
-                                var point2 = matrix.Transform(point);
-
-                                ;
-
-
-                                buildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
-                                //tunnelBuilding.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                ifcBuildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
                                 {
                                     rep.ContextOfItems = GetModelRepresentationContext(model);
                                     rep.RepresentationIdentifier = "Profile";
                                     rep.RepresentationType = "Curve3D";
-                                    rep.Items.AddRange(tunnelProfiles);
+                                    rep.Items.AddRange(ifcTunnelSectionProfiles);
 
                                 }
                                 ));
