@@ -142,17 +142,18 @@ namespace TransITGeometryTransferRevit.Revit
                     segmentIndices.Add(points.Count);
 
                     // TODO: Fix Arcs
-                    if (segment is Arc arc2)
-                    {
-                        var cadPoint = revitTransform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
+                    //if (segment is Arc arc2)
+                    //{
+                    //    var cadPoint = revitTransform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
 
-                        points.Add(new List<double>(){
-                            cadPoint.X,
-                            cadPoint.Y,
-                            cadPoint.Z
-                        });
-                    }
-                    else if (segment is Arc)
+                    //    points.Add(new List<double>(){
+                    //        cadPoint.X,
+                    //        cadPoint.Y,
+                    //        cadPoint.Z
+                    //    });
+                    //}
+                    //else if (segment is Arc)
+                    if (segment is Arc)
                     {
                         var arc = segment as Arc;
 
@@ -160,8 +161,9 @@ namespace TransITGeometryTransferRevit.Revit
                         var tessellatedArc = arc.Tessellate();
 
 
+                        var midPoint = arc.Evaluate(0.5f, true);
                         //var midPoint = tessellatedArc[tessellatedArc.Count/2];
-                        var midPoint = tessellatedArc[1];
+                        //var midPoint = tessellatedArc[1];
 
                         var cadPoint = revitTransform.OfPoint(midPoint) * unitConversion;
                         var transMidPoint = cadPoint;
@@ -230,7 +232,7 @@ namespace TransITGeometryTransferRevit.Revit
 
                         //var values = points[j].Select(v => new IfcLengthMeasure(v));
                         //coordinates.CoordList.GetAt(j).AddRange(values);
-                    };
+                    };  
                 });
 
 
@@ -256,6 +258,7 @@ namespace TransITGeometryTransferRevit.Revit
                     {
 
                         ifcCurve.Segments.Add(new IfcArcIndex(segment));
+                        //ifcCurve.Segments.Add(new IfcLineIndex(segment));
 
 
                     }

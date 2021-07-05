@@ -280,6 +280,7 @@ namespace TransITGeometryTransferRevit.Commands
                                         ifcTransform.Invert();
 
                                         var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
+                                        //var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, 1);
                                         ifcTunnelSectionProfiles.Add(profileIfcIndexedPolyCurve);
 
                                     }
@@ -292,10 +293,13 @@ namespace TransITGeometryTransferRevit.Commands
                                     rep.ContextOfItems = GetModelRepresentationContext(model);
                                     rep.RepresentationIdentifier = "Profile";
                                     rep.RepresentationType = "Curve3D";
+                                    //rep.Items.Add(ifcTunnelSectionProfiles[0]);
                                     rep.Items.AddRange(ifcTunnelSectionProfiles);
 
                                 }
                                 ));
+
+                                
 
 
                             }
