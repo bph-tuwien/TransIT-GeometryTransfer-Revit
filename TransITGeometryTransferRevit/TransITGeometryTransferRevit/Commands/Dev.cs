@@ -153,7 +153,9 @@ namespace TransITGeometryTransferRevit.Commands
 
             var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
             var ifcExportPathFilename = "TunnelExportRevit.ifc";
+            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
             var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
+            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
             var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
 
 
@@ -374,18 +376,43 @@ namespace TransITGeometryTransferRevit.Commands
                                 {
                                     s.Directrix = ifcTunnelSectionLine;
                                     // TODO: temp cross sections
-                                    s.CrossSections.Add(model.Instances.New<IfcCircleProfileDef>(p =>
+
+
+                                    var revitTunnelProfileFamily = revitTunnelParts[0].Symbol.Family;
+                                    var revitTunnelProfileDocument = doc.EditFamily(revitTunnelProfileFamily);
+
+                                    FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(revitTunnelProfileDocument);
+                                    collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
+
+                                    CurveArray profileCurveArray = new CurveArray();
+
+                                    foreach (ModelArc modelArc in collectorRevitTunnelProfile)
+                                    {
+                                        var geometryArc = modelArc.GeometryCurve;
+                                        if (geometryArc is Curve curve)
+                                        {
+                                            profileCurveArray.Append(curve);
+                                        }
+
+                                    }
+
+                                    var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
+
+                                    ;
+
+                                    s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
                                     {
                                         p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
-                                        p.ProfileName = "TestCircelProfile1";
-                                        p.Radius = 100;
+                                        p.ProfileName = "TestCustomProfile1";
+                                        p.OuterCurve = profileIfcIndexedPolyCurve;
                                     }
                                     ));
-                                    s.CrossSections.Add(model.Instances.New<IfcCircleProfileDef>(p =>
+                                    s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
                                     {
                                         p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
-                                        p.ProfileName = "TestCircelProfile2";
-                                        p.Radius = 100;
+                                        p.ProfileName = "TestCustomProfile2";
+                                        p.OuterCurve = profileIfcIndexedPolyCurve;
+
                                     }
                                     ));
 
@@ -444,8 +471,7 @@ namespace TransITGeometryTransferRevit.Commands
 
 
 
-                var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
-                model.SaveAs(ifcExportPath);
+                model.SaveAs(ifcPostExportPath);
 
             }
 
