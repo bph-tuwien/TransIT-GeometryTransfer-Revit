@@ -153,6 +153,8 @@ namespace TransITGeometryTransferRevit.Commands
 
             var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
             var ifcExportPathFilename = "TunnelExportRevit.ifc";
+            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
+            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
 
 
             Transaction transaction = new Transaction(doc);
@@ -169,16 +171,38 @@ namespace TransITGeometryTransferRevit.Commands
 
 
 
+            // ##################################
+            // BUMPING IFC VERSION FROM 4 TO 4X1
+            // ################################
+
+            // TODO: Do a schema upgrade instead of string replace
+
+            using (var input = File.OpenText(ifcExportPath))
+            using (var output = new StreamWriter(ifcExportTempPath))
+            {
+                string line;
+                while (null != (line = input.ReadLine()))
+                {
+                    if (line.Equals("FILE_SCHEMA(('IFC4'));"))
+                    {
+                        output.WriteLine("FILE_SCHEMA(('IFC4X1'));");
+                    }
+                    else
+                    {
+                        output.WriteLine(line);
+                    }
+                }
+            }
+
+            File.Replace(ifcExportTempPath, ifcExportPath, null);
+
 
             // ##############
             // LOADING BACK IFC MODEL
             // ###############
 
 
-
-            // TODO: Bump IFC version from 4 to 4X1
-
-            using (var model = IfcStore.Open(Path.Combine(ifcExportPathFolder, ifcExportPathFilename)))
+            using (var model = IfcStore.Open(ifcExportPath))
             {
 
 
@@ -421,7 +445,7 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                 var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
-                model.SaveAs(Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename));
+                model.SaveAs(ifcExportPath);
 
             }
 
