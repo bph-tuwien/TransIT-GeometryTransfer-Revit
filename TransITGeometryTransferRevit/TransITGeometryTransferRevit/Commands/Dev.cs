@@ -26,6 +26,7 @@ using Xbim.Geometry.Engine.Interop;
 using Xbim.Ifc.Extensions;
 using Xbim.Ifc4.MeasureResource;
 using Xbim.Common.Geometry;
+using Xbim.Ifc4.ProfileResource;
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -174,8 +175,12 @@ namespace TransITGeometryTransferRevit.Commands
             // ###############
 
 
+
+            // TODO: Bump IFC version from 4 to 4X1
+
             using (var model = IfcStore.Open(Path.Combine(ifcExportPathFolder, ifcExportPathFilename)))
             {
+
 
                 // ##############
                 // ADDING TUNNEL LINE AS AXIS REPRESENTATION TO THE WHOLE TUNNEL
@@ -310,9 +315,9 @@ namespace TransITGeometryTransferRevit.Commands
 
 
 
-                                //
-                                //  TUNNEL SECTION TUNNEL LINE
-                                //
+                                // ##########################
+                                // TUNNEL SECTION TUNNEL LINE
+                                // ##########################
 
 
                                 ;
@@ -333,6 +338,66 @@ namespace TransITGeometryTransferRevit.Commands
                                     rep.Items.Add(ifcTunnelSectionLine);
                                 }
                                 ));
+
+
+                                // ############################
+                                // TUNNEL SECTION BODY REPRESENTATION
+                                // ############################
+
+
+
+                                var sweep = model.Instances.New<IfcSectionedSolidHorizontal>(s =>
+                                {
+                                    s.Directrix = ifcTunnelSectionLine;
+                                    // TODO: temp cross sections
+                                    s.CrossSections.Add(model.Instances.New<IfcCircleProfileDef>(p =>
+                                    {
+                                        p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
+                                        p.ProfileName = "TestCircelProfile1";
+                                        p.Radius = 100;
+                                    }
+                                    ));
+                                    s.CrossSections.Add(model.Instances.New<IfcCircleProfileDef>(p =>
+                                    {
+                                        p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
+                                        p.ProfileName = "TestCircelProfile2";
+                                        p.Radius = 100;
+                                    }
+                                    ));
+
+                                    s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
+                                    {
+                                        d.DistanceAlong = 0;
+                                        d.OffsetLateral = 0;
+                                        d.OffsetVertical = 0;
+                                        d.OffsetLongitudinal = 0;
+                                        d.AlongHorizontal = true;
+                                    }
+                                    ));
+
+                                    s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
+                                    {
+                                        d.DistanceAlong = ifcTunnelSectionLine.ToCurve().ApproximateLength;
+                                        //d.DistanceAlong = 100;
+                                        d.OffsetLateral = 0;
+                                        d.OffsetVertical = 0;
+                                        d.OffsetLongitudinal = 0;
+                                        d.AlongHorizontal = true;
+                                    }
+                                    ));
+
+                                    s.FixedAxisVertical = false;
+                                }
+                                );
+
+
+                                // TODO: Fix this
+                                ifcBuildingElementProxy.Representation.Representations[0].RepresentationType = "AdvancedSweptSolid";
+                                ifcBuildingElementProxy.Representation.Representations[0].Items[0] = sweep;
+
+                                // TODO: Remove original MappedRepresentation
+
+                                ;
 
                             }
 
