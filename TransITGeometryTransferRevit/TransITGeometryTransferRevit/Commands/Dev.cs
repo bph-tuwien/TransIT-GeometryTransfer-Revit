@@ -178,7 +178,7 @@ namespace TransITGeometryTransferRevit.Commands
             {
 
                 // ##############
-                // ADDING TUNNEL LINE AS AXIS REPRESENTATION
+                // ADDING TUNNEL LINE AS AXIS REPRESENTATION TO THE WHOLE TUNNEL
                 // ###############
 
 
@@ -246,12 +246,17 @@ namespace TransITGeometryTransferRevit.Commands
                                 collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
 
                                 var ifcTunnelSectionProfiles = new List<IfcIndexedPolyCurve>();
+                                var revitTunnelParts = new List<FamilyInstance>();
+
+                                var ifcTransform = ifcBuildingElementProxy.ObjectPlacement.ToMatrix3D();
+                                ifcTransform.Invert();
 
                                 foreach (FamilyInstance revitTunnelPart in collectorRevitTunnelPart)
                                 {
 
                                     if (revitTunnelPart.SuperComponent != null && revitTunnelSection.Id.ToString() == revitTunnelPart.SuperComponent.Id.ToString())
                                     {
+                                        revitTunnelParts.Add(revitTunnelPart);
 
 
                                         Options gOptions = new Options();
@@ -276,12 +281,14 @@ namespace TransITGeometryTransferRevit.Commands
 
                                         }
 
-                                        var ifcTransform = ifcBuildingElementProxy.ObjectPlacement.ToMatrix3D();
-                                        ifcTransform.Invert();
 
                                         var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
                                         //var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, 1);
                                         ifcTunnelSectionProfiles.Add(profileIfcIndexedPolyCurve);
+
+
+
+
 
                                     }
 
@@ -299,8 +306,33 @@ namespace TransITGeometryTransferRevit.Commands
                                 }
                                 ));
 
-                                
 
+
+
+
+                                //
+                                //  TUNNEL SECTION TUNNEL LINE
+                                //
+
+
+                                ;
+
+                                var p0 = revitTunnelParts[0].Location as LocationPoint;
+                                var p1 = revitTunnelParts[1].Location as LocationPoint;
+
+                                var revitTunnelSectionLine = Line.CreateBound(p0.Point, p1.Point);
+                                var revitTunnelSectionLineCurveArray = new CurveArray();
+                                revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
+                                var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
+
+                                ifcBuildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                {
+                                    rep.ContextOfItems = GetModelRepresentationContext(model);
+                                    rep.RepresentationIdentifier = "Axis";
+                                    rep.RepresentationType = "Curve3D";
+                                    rep.Items.Add(ifcTunnelSectionLine);
+                                }
+                                ));
 
                             }
 
