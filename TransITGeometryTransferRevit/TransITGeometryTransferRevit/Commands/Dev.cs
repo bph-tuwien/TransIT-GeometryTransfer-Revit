@@ -396,7 +396,16 @@ namespace TransITGeometryTransferRevit.Commands
 
                                     }
 
-                                    var profileIfcIndexedPolyCurve = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
+                                    var profileIfcIndexedPolyCurve1 = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
+
+
+                                    var transform1 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(0, 1, 0), new XYZ(0, 0, 0)));
+                                    var transform2 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(1, 0, 0), new XYZ(0, 0, 0)));
+                                    var transform3 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(0, 0, 1), new XYZ(0, 0, 0)));
+                                    var transform = transform2;
+                                    //var transform = Transform.Identity;
+
+                                    var profileIfcIndexedPolyCurve2 = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
                                     ;
 
@@ -404,14 +413,15 @@ namespace TransITGeometryTransferRevit.Commands
                                     {
                                         p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
                                         p.ProfileName = "TestCustomProfile1";
-                                        p.OuterCurve = profileIfcIndexedPolyCurve;
+                                        p.OuterCurve = profileIfcIndexedPolyCurve1;
                                     }
                                     ));
+                                    //s.CrossSections.Add(s.CrossSections[0]);
                                     s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
                                     {
                                         p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
                                         p.ProfileName = "TestCustomProfile2";
-                                        p.OuterCurve = profileIfcIndexedPolyCurve;
+                                        p.OuterCurve = profileIfcIndexedPolyCurve2;
 
                                     }
                                     ));
@@ -429,7 +439,7 @@ namespace TransITGeometryTransferRevit.Commands
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
                                         d.DistanceAlong = ifcTunnelSectionLine.ToCurve().ApproximateLength;
-                                        //d.DistanceAlong = 100;
+                                        //d.DistanceAlong = 100000;
                                         d.OffsetLateral = 0;
                                         d.OffsetVertical = 0;
                                         d.OffsetLongitudinal = 0;
