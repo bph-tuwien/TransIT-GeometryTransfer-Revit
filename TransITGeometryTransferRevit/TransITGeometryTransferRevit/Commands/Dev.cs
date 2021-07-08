@@ -354,7 +354,7 @@ namespace TransITGeometryTransferRevit.Commands
                                 var revitTunnelSectionLine = Line.CreateBound(p0.Point, p1.Point);
                                 var revitTunnelSectionLineCurveArray = new CurveArray();
                                 revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
-                                var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
+                                var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
 
                                 ifcBuildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
                                 {
@@ -432,18 +432,28 @@ namespace TransITGeometryTransferRevit.Commands
                                         d.OffsetLateral = 0;
                                         d.OffsetVertical = 0;
                                         d.OffsetLongitudinal = 0;
-                                        d.AlongHorizontal = true;
+                                        d.AlongHorizontal = false;
                                     }
                                     ));
 
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
-                                        d.DistanceAlong = ifcTunnelSectionLine.ToCurve().ApproximateLength;
-                                        //d.DistanceAlong = 100000;
+                                        // Calculating line lenght
+                                        IfcCartesianPointList3D pointList = ifcTunnelSectionLine.Points as IfcCartesianPointList3D;
+                                        var coordList = pointList.CoordList;
+                                        var x0 = new XYZ(coordList[0][0], coordList[0][1], coordList[0][2]);
+                                        var x1 = new XYZ(coordList[1][0], coordList[1][1], coordList[1][2]);
+                                        var length = (x1 - x0).GetLength();
+
+
+                                        //d.DistanceAlong = ifcTunnelSectionLine.ToCurve().Length - 1;
+                                        d.DistanceAlong = length;
+                                        //d.DistanceAlong = ifcTunnelSectionLine.;
+                                        //d.DistanceAlong = 50000;
                                         d.OffsetLateral = 0;
                                         d.OffsetVertical = 0;
                                         d.OffsetLongitudinal = 0;
-                                        d.AlongHorizontal = true;
+                                        d.AlongHorizontal = false;
                                     }
                                     ));
 
