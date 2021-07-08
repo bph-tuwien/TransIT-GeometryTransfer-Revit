@@ -443,7 +443,7 @@ namespace TransITGeometryTransferRevit.Commands
                                         var coordList = pointList.CoordList;
                                         var x0 = new XYZ(coordList[0][0], coordList[0][1], coordList[0][2]);
                                         var x1 = new XYZ(coordList[1][0], coordList[1][1], coordList[1][2]);
-                                        var length = (x1 - x0).GetLength();
+                                        var length = (x1 - x0).GetLength() - 0.00000000001;
 
 
                                         //d.DistanceAlong = ifcTunnelSectionLine.ToCurve().Length - 1;
