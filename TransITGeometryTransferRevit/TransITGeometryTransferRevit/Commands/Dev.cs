@@ -276,16 +276,35 @@ namespace TransITGeometryTransferRevit.Commands
                             b.ObjectType = "TunnelSectionTest";
                             b.ObjectPlacement = model.Instances.New<IfcLocalPlacement>(p =>
                             {
-                                //p.PlacementRelTo = 
+
+                                var objects = model.Instances.OfType<IfcBuildingStorey>();
+                                var tunnelStorey = objects.First();
+
+                                //p.PlacementRelTo = tunnelStorey.ObjectPlacement;
                                 p.RelativePlacement = model.Instances.New<IfcAxis2Placement3D>(t =>
                                 {
 
                                     t.Location = model.Instances.New<IfcCartesianPoint>(cp =>
                                     {
+                                        //var loc = revitTunnelSectionFamilyInstance.Location as LocationPoint;
 
-                                        cp.X = 0;
-                                        cp.Y = 0;
-                                        cp.Z = 0;
+                                        //cp.X = loc.Point.X;
+                                        //cp.Y = loc.Point.Y;
+                                        //cp.Z = loc.Point.Z;
+
+                                        var originPoint = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
+
+                                        cp.X = originPoint.Position.X * Constants.FeetToMillimeter;
+                                        cp.Y = originPoint.Position.Y * Constants.FeetToMillimeter;
+                                        cp.Z = originPoint.Position.Z * Constants.FeetToMillimeter;
+
+                                        //cp.X = 0;
+                                        //cp.Y = 0;
+                                        //cp.Z = 0;
+
+                                        //cp.X = 975585;
+                                        //cp.Y = 56777;
+                                        //cp.Z = 353345;
 
                                     });
 
@@ -297,9 +316,13 @@ namespace TransITGeometryTransferRevit.Commands
                                         var upDir = upPoint.Position - originPoint.Position;
 
 
-                                        d.X = upDir.X;
-                                        d.Y = upDir.Y;
-                                        d.Z = upDir.Z;
+                                        //d.X = upDir.X;
+                                        //d.Y = upDir.Y;
+                                        //d.Z = upDir.Z;
+
+                                        d.X = 0;
+                                        d.Y = 0;
+                                        d.Z = 1;
 
                                     });
 
@@ -311,9 +334,13 @@ namespace TransITGeometryTransferRevit.Commands
                                         var forwardDir = endPoint.Position - originPoint.Position;
 
 
-                                        d.X = forwardDir.X;
-                                        d.Y = forwardDir.Y;
-                                        d.Z = forwardDir.Z;
+                                        //d.X = forwardDir.X;
+                                        //d.Y = forwardDir.Y;
+                                        //d.Z = forwardDir.Z;
+
+                                        d.X = 1;
+                                        d.Y = 0;
+                                        d.Z = 0;
 
                                     });
 
@@ -330,8 +357,14 @@ namespace TransITGeometryTransferRevit.Commands
                             var p0 = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
                             var p1 = docfamily.GetElement(placePointIds[1]) as ReferencePoint;
 
+                            var xyz0 = new XYZ(0, 0, 0);
+                            //var xyz0 = p0.Position;
+                            var xyz1 = p1.Position - p0.Position;
+                            //var xyz1 = new XYZ((p1.Position - p0.Position).GetLength(),0,0);
+                            //var xyz1 = p1.Position;
 
-                            var revitTunnelSectionLine = Line.CreateBound(p0.Position, p1.Position);
+
+                            var revitTunnelSectionLine = Line.CreateBound(xyz0, xyz1);
                             var revitTunnelSectionLineCurveArray = new CurveArray();
                             revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
                             var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
@@ -468,7 +501,6 @@ namespace TransITGeometryTransferRevit.Commands
 
                         });
 
-                        break;
 
                     }
 
