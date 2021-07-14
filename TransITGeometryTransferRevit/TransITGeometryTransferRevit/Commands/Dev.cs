@@ -27,6 +27,7 @@ using Xbim.Ifc.Extensions;
 using Xbim.Ifc4.MeasureResource;
 using Xbim.Common.Geometry;
 using Xbim.Ifc4.ProfileResource;
+using Xbim.Common;
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -249,6 +250,61 @@ namespace TransITGeometryTransferRevit.Commands
                 // DELETING OLD TUNNEL SECTIONS
                 // #############################
 
+                {
+                    var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
+
+                    List<IPersistEntity> entitiesToDelete = new List<IPersistEntity>();
+
+                    foreach (var tunnelSection in ifcBuildingElementProxies)
+                    {
+                        entitiesToDelete.Add(tunnelSection);
+                        entitiesToDelete.Add(tunnelSection.Representation);
+                        var propertySets = tunnelSection.PropertySets;
+
+                        foreach (var propertySet in propertySets)
+                        {
+
+                            
+
+                            ;
+                            entitiesToDelete.AddRange(propertySet.HasProperties);
+                            entitiesToDelete.AddRange(propertySet.DefinesOccurrence);
+                            entitiesToDelete.AddRange(propertySet.PropertySetDefinitions);
+                            entitiesToDelete.Add(propertySet);
+
+                        }
+
+
+                        ;
+                    }
+
+                    while (entitiesToDelete.Count > 0)
+                    {
+                        var entity = entitiesToDelete.First();
+                        entitiesToDelete.RemoveAt(0);
+
+                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                        {
+                            try
+                            {
+                                entity.Model.Delete(entity);
+                            }
+                            catch (System.Exception e)
+                            {
+                                ;
+                            }
+                            ifcTransaction.Commit();
+                        }
+                    }
+
+                }
+
+
+
+
+
+
+
 
 
 
@@ -294,7 +350,7 @@ namespace TransITGeometryTransferRevit.Commands
 
                             //b.GlobalId = "TESTtestTESTtestTESTte";
                             //b.OwnerHistory = 
-                            b.Name = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" + 
+                            b.Name = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
                                      revitTunnelSectionFamilyInstance.Symbol.Name + ":" +
                                      sectionIDParam.AsInteger();
                             //b.Description = 
