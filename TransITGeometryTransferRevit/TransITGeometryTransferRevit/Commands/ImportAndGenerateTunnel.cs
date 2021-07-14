@@ -271,8 +271,11 @@ namespace TransITGeometryTransferRevit.Commands
                     var sectionPoints = new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] };
                     var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, sectionPoints);
 
-                    Parameter myparam = instance.LookupParameter("Profile");
-                    myparam.Set(tunnelProfileFamilySymbolId);
+                    Parameter profileParam = instance.LookupParameter("Profile");
+                    profileParam.Set(tunnelProfileFamilySymbolId);
+
+                    Parameter sectionIDParam = instance.LookupParameter("SectionID");
+                    sectionIDParam.Set(i-1);
 
                 }
 

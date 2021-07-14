@@ -245,6 +245,12 @@ namespace TransITGeometryTransferRevit.Commands
                     ifcTransaction.Commit();
                 }
 
+                // #############################
+                // DELETING OLD TUNNEL SECTIONS
+                // #############################
+
+
+
 
                 // #############################
                 // RECREATING TUNNEL SECTIONS
@@ -264,23 +270,43 @@ namespace TransITGeometryTransferRevit.Commands
 
                         var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
 
+
+
+
+
+
+
+                        FilteredElementCollector collectorRevitSuperTunnelSection = new FilteredElementCollector(doc);
+                        collectorRevitSuperTunnelSection = collectorRevitSuperTunnelSection.OfClass(typeof(FamilyInstance));
+                        var queryRevitSuperTunnelSection = from element in collectorRevitSuperTunnelSection where element.Name.StartsWith("TunnelSection") select element;
+
+
+
+
+
+
                         var placePointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(revitTunnelSectionFamilyInstance);
 
                         var buildingElementProxy = model.Instances.New<IfcBuildingElementProxy>(b =>
                         {
 
-                            b.GlobalId = "TESTtestTESTtestTESTte";
+                            Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
+
+                            //b.GlobalId = "TESTtestTESTtestTESTte";
                             //b.OwnerHistory = 
-                            b.Name = "TunnelSectionTest";
+                            b.Name = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" + 
+                                     revitTunnelSectionFamilyInstance.Symbol.Name + ":" +
+                                     sectionIDParam.AsInteger();
                             //b.Description = 
-                            b.ObjectType = "TunnelSectionTest";
+                            b.ObjectType = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
+                                           revitTunnelSectionFamilyInstance.Symbol.Name;
                             b.ObjectPlacement = model.Instances.New<IfcLocalPlacement>(p =>
                             {
 
                                 var objects = model.Instances.OfType<IfcBuildingStorey>();
                                 var tunnelStorey = objects.First();
 
-                                //p.PlacementRelTo = tunnelStorey.ObjectPlacement;
+                                p.PlacementRelTo = tunnelStorey.ObjectPlacement;
                                 p.RelativePlacement = model.Instances.New<IfcAxis2Placement3D>(t =>
                                 {
 
@@ -536,7 +562,9 @@ namespace TransITGeometryTransferRevit.Commands
                             {
 
                                 // Matching Revit and IFC tunnel sections
-                                if (ifcBuildingElementProxy.Name.ToString().EndsWith(revitTunnelSection.Id.ToString()))
+                                Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
+
+                                if (ifcBuildingElementProxy.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
                                 {
 
                                     FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(doc);
