@@ -28,6 +28,7 @@ using Xbim.Ifc4.MeasureResource;
 using Xbim.Common.Geometry;
 using Xbim.Ifc4.ProfileResource;
 using Xbim.Common;
+using Xbim.Ifc4.PresentationAppearanceResource;
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -257,8 +258,40 @@ namespace TransITGeometryTransferRevit.Commands
 
                     foreach (var tunnelSection in ifcBuildingElementProxies)
                     {
-                        entitiesToDelete.Add(tunnelSection);
+
+                        entitiesToDelete.Add(
+                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                            .Location);
+                        entitiesToDelete.Add(
+                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                            .Axis);
+                        entitiesToDelete.Add(
+                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                            .RefDirection);
+                        entitiesToDelete.Add((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement);
+                        entitiesToDelete.Add(tunnelSection.ObjectPlacement);
+
+
+
+                        entitiesToDelete.AddRange(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Faces);
+                        entitiesToDelete.Add(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Coordinates);
+                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource.MappedRepresentation.Items[0]);
+                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource.MappedRepresentation);
+                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource.MappingOrigin);
+                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                            .MappingSource);
+                        entitiesToDelete.Add(tunnelSection.Representation.Representations[0].Items[0]);
+                        entitiesToDelete.Add(tunnelSection.Representation.Representations[0]);
                         entitiesToDelete.Add(tunnelSection.Representation);
+                        entitiesToDelete.Add(tunnelSection);
+
+
+
                         var propertySets = tunnelSection.PropertySets;
 
                         foreach (var propertySet in propertySets)
@@ -300,6 +333,27 @@ namespace TransITGeometryTransferRevit.Commands
                                 ;
                             }
                             ifcTransaction.Commit();
+                        }
+                    }
+
+
+                    var ifcBuildingElementProxyTypes = model.Instances.OfType<IfcBuildingElementProxyType>();
+
+                    foreach (var proxyType in ifcBuildingElementProxyTypes)
+                    {
+                        if (proxyType.RepresentationMaps.Count == 0)
+                        {
+                            entitiesToDelete.Add(proxyType);
+                        }
+                    }
+
+                    var ifcIndexedColourMaps = model.Instances.OfType<IfcIndexedColourMap>();
+
+                    foreach (var colourMap in ifcIndexedColourMaps)
+                    {
+                        if (colourMap.MappedTo == null)
+                        {
+                            entitiesToDelete.Add(colourMap);
                         }
                     }
 
