@@ -278,6 +278,68 @@ namespace TransITGeometryTransferRevit.Commands
                         ;
                     }
 
+                    
+
+
+
+
+
+                    while (entitiesToDelete.Count > 0)
+                    {
+                        var entity = entitiesToDelete.First();
+                        entitiesToDelete.RemoveAt(0);
+
+                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                        {
+                            try
+                            {
+                                entity.Model.Delete(entity);
+                            }
+                            catch (System.Exception e)
+                            {
+                                ;
+                            }
+                            ifcTransaction.Commit();
+                        }
+                    }
+
+
+
+                    var ifcPropertySets = model.Instances.OfType<IfcPropertySet>();
+
+                    foreach (var propertySet in ifcPropertySets)
+                    {
+                        if (propertySet.HasProperties.Count == 0)
+                        {
+                            entitiesToDelete.Add(propertySet);
+                        }
+                    }
+
+                    var ifcRelContainedInSpatialStructures = model.Instances.OfType<IfcRelContainedInSpatialStructure>();
+
+                    foreach (var rel in ifcRelContainedInSpatialStructures)
+                    {
+                        if (rel.RelatedElements.Count == 0)
+                        {
+                            entitiesToDelete.Add(rel);
+                        }
+                    }
+
+                    var ifcRelDefinesByType = model.Instances.OfType<IfcRelDefinesByType>();
+
+                    foreach (var rel in ifcRelDefinesByType)
+                    {
+                        if (rel.RelatedObjects.Count == 0)
+                        {
+                            entitiesToDelete.Add(rel);
+                        }
+                    }
+
+                    ;
+
+
+
+
                     while (entitiesToDelete.Count > 0)
                     {
                         var entity = entitiesToDelete.First();
