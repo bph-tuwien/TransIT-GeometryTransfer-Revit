@@ -75,6 +75,21 @@ namespace TransITGeometryTransferRevit.Commands
             return null;
         }
 
+        public void ExportDocumentToIfc(Document doc, string ifcExportPathFolder, string ifcExportPathFilename)
+        {
+            Transaction transaction = new Transaction(doc);
+            {
+                transaction.Start("create tunnel");
+
+                var ifcOptions = new IFCExportOptions();
+                ifcOptions.FileVersion = IFCVersion.IFC4;
+
+                doc.Export(ifcExportPathFolder, ifcExportPathFilename, ifcOptions);
+
+                transaction.Commit();
+            }
+        }
+
 
         /// <summary>
         /// Dev command class
@@ -161,17 +176,7 @@ namespace TransITGeometryTransferRevit.Commands
             var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
 
 
-            Transaction transaction = new Transaction(doc);
-            {
-                transaction.Start("create tunnel");
-
-                var ifcOptions = new IFCExportOptions();
-                ifcOptions.FileVersion = IFCVersion.IFC4;
-
-                doc.Export(ifcExportPathFolder, ifcExportPathFilename, ifcOptions);
-
-                transaction.Commit();
-            }
+            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
 
 
 
