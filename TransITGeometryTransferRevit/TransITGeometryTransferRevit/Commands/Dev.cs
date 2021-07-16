@@ -75,19 +75,57 @@ namespace TransITGeometryTransferRevit.Commands
             return null;
         }
 
+        /// <summary>
+        /// Exporting the given Revit document to IFC version 4 to the given folder and file name.
+        /// </summary>
+        /// <param name="doc">The Revit document to export</param>
+        /// <param name="ifcExportPathFolder">Path to the output folder</param>
+        /// <param name="ifcExportPathFilename">File name of the exported IFC model</param>
         public void ExportDocumentToIfc(Document doc, string ifcExportPathFolder, string ifcExportPathFilename)
         {
             Transaction transaction = new Transaction(doc);
             {
-                transaction.Start("create tunnel");
+                transaction.Start("Exporting document to IFC");
 
-                var ifcOptions = new IFCExportOptions();
-                ifcOptions.FileVersion = IFCVersion.IFC4;
+                var ifcOptions = new IFCExportOptions
+                {
+                    FileVersion = IFCVersion.IFC4
+                };
 
                 doc.Export(ifcExportPathFolder, ifcExportPathFilename, ifcOptions);
 
                 transaction.Commit();
             }
+        }
+
+        /// <summary>
+        /// Bumping the given IFC4 file's version to IFC4X1 to get access to new IFC entities. The given IFC file will
+        /// be replaced with the new one.
+        /// </summary>
+        /// <param name="ifcExportPath">The original IFC4 file</param>
+        /// <param name="ifcExportTempPath">A filepath to use as temp for the file replace</param>
+        public void BumpIFCVersionTo4X1(string ifcExportPath, string ifcExportTempPath)
+        {
+            // TODO: Find a better way of schema upgrade instead of string replace
+
+            using (var input = File.OpenText(ifcExportPath))
+            using (var output = new StreamWriter(ifcExportTempPath))
+            {
+                string line;
+                while (null != (line = input.ReadLine()))
+                {
+                    if (line.Equals("FILE_SCHEMA(('IFC4'));"))
+                    {
+                        output.WriteLine("FILE_SCHEMA(('IFC4X1'));");
+                    }
+                    else
+                    {
+                        output.WriteLine(line);
+                    }
+                }
+            }
+
+            File.Replace(ifcExportTempPath, ifcExportPath, null);
         }
 
 
@@ -177,33 +215,10 @@ namespace TransITGeometryTransferRevit.Commands
 
 
             ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
+            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
 
 
 
-            // ##################################
-            // BUMPING IFC VERSION FROM 4 TO 4X1
-            // ################################
-
-            // TODO: Do a schema upgrade instead of string replace
-
-            using (var input = File.OpenText(ifcExportPath))
-            using (var output = new StreamWriter(ifcExportTempPath))
-            {
-                string line;
-                while (null != (line = input.ReadLine()))
-                {
-                    if (line.Equals("FILE_SCHEMA(('IFC4'));"))
-                    {
-                        output.WriteLine("FILE_SCHEMA(('IFC4X1'));");
-                    }
-                    else
-                    {
-                        output.WriteLine(line);
-                    }
-                }
-            }
-
-            File.Replace(ifcExportTempPath, ifcExportPath, null);
 
 
             // ##############
