@@ -199,6 +199,149 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
+        /// <summary>
+        /// Deleting Tunnel Section IfcBuildingElementProxies and their child entities
+        /// </summary>
+        /// <param name="ifcFilePath">The IFC file's filepath to do the removal in</param>
+        public void DeleteTunnelSections(string ifcFilePath)
+        {
+            using (var model = IfcStore.Open(ifcFilePath))
+            {
+                var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
+                List<IPersistEntity> entitiesToDelete = new List<IPersistEntity>();
+
+
+                // Local function to delete entities from the entitiesToDelete List
+                void DeleteEntities()
+                {
+                    while (entitiesToDelete.Count > 0)
+                    {
+                        var entity = entitiesToDelete.First();
+                        entitiesToDelete.RemoveAt(0);
+
+                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                        {
+                            try
+                            {
+                                entity.Model.Delete(entity);
+                            }
+                            catch (System.Exception e)
+                            {
+                                // Hide exceptions about already deleted entities
+                            }
+                            ifcTransaction.Commit();
+                        }
+                    }
+                }
+
+
+                foreach (var tunnelSection in ifcBuildingElementProxies)
+                {
+                    entitiesToDelete.Add(
+                        (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                        .Location);
+                    entitiesToDelete.Add(
+                        (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                        .Axis);
+                    entitiesToDelete.Add(
+                        (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
+                        .RefDirection);
+                    entitiesToDelete.Add((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement);
+                    entitiesToDelete.Add(tunnelSection.ObjectPlacement);
+
+
+
+                    entitiesToDelete.AddRange(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Faces);
+                    entitiesToDelete.Add(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Coordinates);
+                    entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource.MappedRepresentation.Items[0]);
+                    entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource.MappedRepresentation);
+                    entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource.MappingOrigin);
+                    entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
+                        .MappingSource);
+                    entitiesToDelete.Add(tunnelSection.Representation.Representations[0].Items[0]);
+                    entitiesToDelete.Add(tunnelSection.Representation.Representations[0]);
+                    entitiesToDelete.Add(tunnelSection.Representation);
+                    entitiesToDelete.Add(tunnelSection);
+
+                    var propertySets = tunnelSection.PropertySets;
+
+                    foreach (var propertySet in propertySets)
+                    {
+                        entitiesToDelete.AddRange(propertySet.HasProperties);
+                        entitiesToDelete.AddRange(propertySet.DefinesOccurrence);
+                        entitiesToDelete.AddRange(propertySet.PropertySetDefinitions);
+                        entitiesToDelete.Add(propertySet);
+                    }
+                }
+
+
+                DeleteEntities();
+
+                // Second run of collecting entities to delete, but this time based on empty references. (this way it's
+                // easier to find entities that were part of the tunnel sections)
+
+                var ifcBuildingElementProxyTypes = model.Instances.OfType<IfcBuildingElementProxyType>();
+
+                foreach (var proxyType in ifcBuildingElementProxyTypes)
+                {
+                    if (proxyType.RepresentationMaps.Count == 0)
+                    {
+                        entitiesToDelete.Add(proxyType);
+                    }
+                }
+
+                var ifcIndexedColourMaps = model.Instances.OfType<IfcIndexedColourMap>();
+
+                foreach (var colourMap in ifcIndexedColourMaps)
+                {
+                    if (colourMap.MappedTo == null)
+                    {
+                        entitiesToDelete.Add(colourMap);
+                    }
+                }
+
+
+                var ifcPropertySets = model.Instances.OfType<IfcPropertySet>();
+
+                foreach (var propertySet in ifcPropertySets)
+                {
+                    if (propertySet.HasProperties.Count == 0)
+                    {
+                        entitiesToDelete.Add(propertySet);
+                    }
+                }
+
+                var ifcRelContainedInSpatialStructures = model.Instances.OfType<IfcRelContainedInSpatialStructure>();
+
+                foreach (var rel in ifcRelContainedInSpatialStructures)
+                {
+                    if (rel.RelatedElements.Count == 0)
+                    {
+                        entitiesToDelete.Add(rel);
+                    }
+                }
+
+                var ifcRelDefinesByType = model.Instances.OfType<IfcRelDefinesByType>();
+
+                foreach (var rel in ifcRelDefinesByType)
+                {
+                    if (rel.RelatedObjects.Count == 0)
+                    {
+                        entitiesToDelete.Add(rel);
+                    }
+                }
+
+                DeleteEntities();
+
+                model.SaveAs(ifcFilePath);
+            }
+        }
+
 
         /// <summary>
         /// Dev command class
@@ -234,10 +377,8 @@ namespace TransITGeometryTransferRevit.Commands
 
             ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
             BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
-
-
             AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
-
+            DeleteTunnelSections(ifcExportPath);
 
             // ##############
             // LOADING BACK IFC MODEL
@@ -246,187 +387,6 @@ namespace TransITGeometryTransferRevit.Commands
 
             using (var model = IfcStore.Open(ifcExportPath))
             {
-
-
-                // ##############
-                // ADDING TUNNEL LINE AS AXIS REPRESENTATION TO THE WHOLE TUNNEL
-                // ###############
-
-
-
-                // #############################
-                // DELETING OLD TUNNEL SECTIONS
-                // #############################
-
-                {
-                    var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
-
-                    List<IPersistEntity> entitiesToDelete = new List<IPersistEntity>();
-
-                    foreach (var tunnelSection in ifcBuildingElementProxies)
-                    {
-
-                        entitiesToDelete.Add(
-                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
-                            .Location);
-                        entitiesToDelete.Add(
-                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
-                            .Axis);
-                        entitiesToDelete.Add(
-                            (((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement) as IfcAxis2Placement3D)
-                            .RefDirection);
-                        entitiesToDelete.Add((tunnelSection.ObjectPlacement as IfcLocalPlacement).RelativePlacement);
-                        entitiesToDelete.Add(tunnelSection.ObjectPlacement);
-
-
-
-                        entitiesToDelete.AddRange(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Faces);
-                        entitiesToDelete.Add(((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource.MappedRepresentation.Items[0] as IfcPolygonalFaceSet).Coordinates);
-                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource.MappedRepresentation.Items[0]);
-                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource.MappedRepresentation);
-                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource.MappingOrigin);
-                        entitiesToDelete.Add((tunnelSection.Representation.Representations[0].Items[0] as IfcMappedItem)
-                            .MappingSource);
-                        entitiesToDelete.Add(tunnelSection.Representation.Representations[0].Items[0]);
-                        entitiesToDelete.Add(tunnelSection.Representation.Representations[0]);
-                        entitiesToDelete.Add(tunnelSection.Representation);
-                        entitiesToDelete.Add(tunnelSection);
-
-
-
-                        var propertySets = tunnelSection.PropertySets;
-
-                        foreach (var propertySet in propertySets)
-                        {
-
-
-
-                            ;
-                            entitiesToDelete.AddRange(propertySet.HasProperties);
-                            entitiesToDelete.AddRange(propertySet.DefinesOccurrence);
-                            entitiesToDelete.AddRange(propertySet.PropertySetDefinitions);
-                            entitiesToDelete.Add(propertySet);
-
-                        }
-
-
-                        ;
-                    }
-
-
-
-
-
-
-
-                    while (entitiesToDelete.Count > 0)
-                    {
-                        var entity = entitiesToDelete.First();
-                        entitiesToDelete.RemoveAt(0);
-
-                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
-                        {
-                            try
-                            {
-                                entity.Model.Delete(entity);
-                            }
-                            catch (System.Exception e)
-                            {
-                                ;
-                            }
-                            ifcTransaction.Commit();
-                        }
-                    }
-
-
-                    var ifcBuildingElementProxyTypes = model.Instances.OfType<IfcBuildingElementProxyType>();
-
-                    foreach (var proxyType in ifcBuildingElementProxyTypes)
-                    {
-                        if (proxyType.RepresentationMaps.Count == 0)
-                        {
-                            entitiesToDelete.Add(proxyType);
-                        }
-                    }
-
-                    var ifcIndexedColourMaps = model.Instances.OfType<IfcIndexedColourMap>();
-
-                    foreach (var colourMap in ifcIndexedColourMaps)
-                    {
-                        if (colourMap.MappedTo == null)
-                        {
-                            entitiesToDelete.Add(colourMap);
-                        }
-                    }
-
-
-
-                    var ifcPropertySets = model.Instances.OfType<IfcPropertySet>();
-
-                    foreach (var propertySet in ifcPropertySets)
-                    {
-                        if (propertySet.HasProperties.Count == 0)
-                        {
-                            entitiesToDelete.Add(propertySet);
-                        }
-                    }
-
-                    var ifcRelContainedInSpatialStructures = model.Instances.OfType<IfcRelContainedInSpatialStructure>();
-
-                    foreach (var rel in ifcRelContainedInSpatialStructures)
-                    {
-                        if (rel.RelatedElements.Count == 0)
-                        {
-                            entitiesToDelete.Add(rel);
-                        }
-                    }
-
-                    var ifcRelDefinesByType = model.Instances.OfType<IfcRelDefinesByType>();
-
-                    foreach (var rel in ifcRelDefinesByType)
-                    {
-                        if (rel.RelatedObjects.Count == 0)
-                        {
-                            entitiesToDelete.Add(rel);
-                        }
-                    }
-
-                    ;
-
-
-
-
-                    while (entitiesToDelete.Count > 0)
-                    {
-                        var entity = entitiesToDelete.First();
-                        entitiesToDelete.RemoveAt(0);
-
-                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
-                        {
-                            try
-                            {
-                                entity.Model.Delete(entity);
-                            }
-                            catch (System.Exception e)
-                            {
-                                ;
-                            }
-                            ifcTransaction.Commit();
-                        }
-                    }
-
-                }
-
-
-
-
-
-
 
 
 
