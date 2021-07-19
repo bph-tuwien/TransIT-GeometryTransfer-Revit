@@ -128,115 +128,43 @@ namespace TransITGeometryTransferRevit.Commands
             File.Replace(ifcExportTempPath, ifcExportPath, null);
         }
 
-
-        /// <summary>
-        /// Dev command class
-        /// </summary>
-        /// <param name="commandData"></param>
-        /// <param name="message"></param>
-        /// <param name="elements"></param>
-        /// <returns></returns>
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public T[] GetElements<T>(Document doc, string startsWith) where T : class
         {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
-            Document doc = uidoc.Document;
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            collector = collector.OfClass(typeof(T));
 
+            var query = from element in collector where element.Name.StartsWith(startsWith) select element;
+            List<Element> elements = query.ToList<Element>();
 
-            // ###############
-            // GETTING TUNNEL LINE STUFF
-            // #############
+            List<T> result = new List<T>();
 
-            //var docfamily = FamilyUtils.GetFamilyDocumentByName(doc, "TunnelFamily");
+            foreach (var elem in elements)
+            {
+                result.Add(elem as T);
+            }
 
-            FilteredElementCollector collectorTunnel = new FilteredElementCollector(doc);
-            collectorTunnel = collectorTunnel.OfClass(typeof(FamilyInstance));
+            return result.ToArray();
+        }
 
-            var queryTunnel = from element in collectorTunnel where element.Name.StartsWith("TunnelFamily") select element;
-            List<Element> resultTunnel = queryTunnel.ToList<Element>();
-
-
-            FamilyInstance tunnelFamilyInstance = queryTunnel.First() as FamilyInstance;
-            var fam = tunnelFamilyInstance.Symbol.Family;
-            var docfamily = doc.EditFamily(fam);
-
-
-
-            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
-
-
-
-
-            ;
-
-
-
-
-            FilteredElementCollector collector = new FilteredElementCollector(docfamily);
-            collector = collector.OfClass(typeof(DirectShape));
-
-            var query = from element in collector where element.Name.StartsWith("TunnelLine") select element;
-            List<Element> result = query.ToList<Element>();
-
-            // TODO: nul check
-            DirectShape tunnelLineShape = result[0] as DirectShape;
-            GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
-
-            //tunnelLineGeometry = tunnelLineGeometry.GetTransformed
-
-            ;
-
-
-
-
-            //FilteredElementCollector collector = new FilteredElementCollector(doc);
-            //collector = collector.OfClass(typeof(DirectShape));
-
-            //var query = from element in collector where element.Name.StartsWith("TunnelLine") select element;
-            //List<Element> result = query.ToList<Element>();
-
-            //// TODO: nul check
-            //DirectShape tunnelLineShape = result[0] as DirectShape;
-            //GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
-
-
-
-            // ##################
-            // INITIAL EXPORT OF TUNNEL TO IFC
-            // ###############
-
-            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
-            var ifcExportPathFilename = "TunnelExportRevit.ifc";
-            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
-            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
-            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
-            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
-
-
-            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
-            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
-
-
-
-
-
-            // ##############
-            // LOADING BACK IFC MODEL
-            // ###############
-
-
+        public void AddTunnelLineAsAxisRepresentation(Document doc, string ifcExportPath)
+        {
             using (var model = IfcStore.Open(ifcExportPath))
             {
 
-
-                // ##############
-                // ADDING TUNNEL LINE AS AXIS REPRESENTATION TO THE WHOLE TUNNEL
-                // ###############
-
-
-                using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                using (var ifcTransaction = model.BeginTransaction(
+                                        "TransITGeometryTransferRevit.Commands.Dev.AddTunnelLineAsAxisRepresentation"))
                 {
+
+                    FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
+                    var fam = tunnelFamilyInstance.Symbol.Family;
+                    var docfamily = doc.EditFamily(fam);
+                    var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
+
+
+                    DirectShape tunnelLineShape = GetElements<DirectShape>(docfamily, "TunnelLine").First();
+                    GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
+
+
                     var objects = model.Instances.OfType<IfcBuildingStorey>();
                     var tunnelStorey = objects.First();
 
@@ -266,6 +194,64 @@ namespace TransITGeometryTransferRevit.Commands
 
                     ifcTransaction.Commit();
                 }
+                model.SaveAs(ifcExportPath);
+            }
+        }
+
+
+        /// <summary>
+        /// Dev command class
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="message"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+
+            FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
+            var fam = tunnelFamilyInstance.Symbol.Family;
+            var docfamily = doc.EditFamily(fam);
+
+            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
+
+
+
+            // TODO: Make this a user prompt
+            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
+            var ifcExportPathFilename = "TunnelExportRevit.ifc";
+            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
+            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
+            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
+
+
+            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
+            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
+
+
+            AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
+
+
+            // ##############
+            // LOADING BACK IFC MODEL
+            // ###############
+
+
+            using (var model = IfcStore.Open(ifcExportPath))
+            {
+
+
+                // ##############
+                // ADDING TUNNEL LINE AS AXIS REPRESENTATION TO THE WHOLE TUNNEL
+                // ###############
+
+
 
                 // #############################
                 // DELETING OLD TUNNEL SECTIONS
@@ -317,7 +303,7 @@ namespace TransITGeometryTransferRevit.Commands
                         foreach (var propertySet in propertySets)
                         {
 
-                            
+
 
                             ;
                             entitiesToDelete.AddRange(propertySet.HasProperties);
@@ -331,7 +317,7 @@ namespace TransITGeometryTransferRevit.Commands
                         ;
                     }
 
-                    
+
 
 
 
@@ -450,27 +436,15 @@ namespace TransITGeometryTransferRevit.Commands
                 using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
                 {
 
-                    FilteredElementCollector collectorRevitTunnelSection = new FilteredElementCollector(docfamily);
-                    collectorRevitTunnelSection = collectorRevitTunnelSection.OfClass(typeof(FamilyInstance));
-                    var queryRevitTunnelSection = from element in collectorRevitTunnelSection where element.Name.StartsWith("TunnelSection") select element;
+                    var revitTunnelSections = GetElements<FamilyInstance>(docfamily, "TunnelSection");
 
                     var ifcBuildingElementProxies = new List<IfcBuildingElementProxy>();
 
 
-                    foreach (var revitTunnelSection in queryRevitTunnelSection)
+                    foreach (var revitTunnelSection in revitTunnelSections)
                     {
 
                         var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
-
-
-
-
-
-
-
-                        FilteredElementCollector collectorRevitSuperTunnelSection = new FilteredElementCollector(doc);
-                        collectorRevitSuperTunnelSection = collectorRevitSuperTunnelSection.OfClass(typeof(FamilyInstance));
-                        var queryRevitSuperTunnelSection = from element in collectorRevitSuperTunnelSection where element.Name.StartsWith("TunnelSection") select element;
 
 
 
