@@ -175,7 +175,8 @@ namespace TransITGeometryTransferRevit.Commands
                     DirectShape tunnelLineShape = GetElements<DirectShape>(docfamily, "TunnelLine").First();
                     GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
 
-                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
+                    var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform,
+                                                                                       XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
                     var tunnelBuilding = model.Instances.OfType<IfcBuilding>().First();
 
@@ -219,7 +220,8 @@ namespace TransITGeometryTransferRevit.Commands
                         var entity = entitiesToDelete.First();
                         entitiesToDelete.RemoveAt(0);
 
-                        using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                        using (var ifcTransaction = model.BeginTransaction(
+                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSections"))
                         {
                             try
                             {
@@ -346,47 +348,33 @@ namespace TransITGeometryTransferRevit.Commands
         {
             using (var model = IfcStore.Open(ifcFilePath))
             {
-                // #############################
-                // RECREATING TUNNEL SECTIONS
-                // #############################
-                using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                using (var ifcTransaction = model.BeginTransaction(
+                                            "TransITGeometryTransferRevit.Commands.Dev.RecreatingTunnelSectionsInIFC"))
                 {
 
                     var revitTunnelSections = GetElements<FamilyInstance>(tunnelFamilyDocument, "TunnelSection");
-
                     var ifcBuildingElementProxies = new List<IfcBuildingElementProxy>();
 
 
                     foreach (var revitTunnelSection in revitTunnelSections)
                     {
-
-                        var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
-
-
-
-
-
-
-                        var placePointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(revitTunnelSectionFamilyInstance);
+                        var placementPointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(revitTunnelSection);
 
                         var buildingElementProxy = model.Instances.New<IfcBuildingElementProxy>(b =>
                         {
+                            Parameter sectionIDParam = revitTunnelSection.LookupParameter("SectionID");
 
-                            Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
-
-                            //b.GlobalId = "TESTtestTESTtestTESTte";
+                            //b.GlobalId = 
                             //b.OwnerHistory = 
-                            b.Name = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
-                                         revitTunnelSectionFamilyInstance.Symbol.Name + ":" +
+                            b.Name = revitTunnelSection.Symbol.FamilyName + ":" +
+                                         revitTunnelSection.Symbol.Name + ":" +
                                          sectionIDParam.AsInteger();
                             //b.Description = 
-                            b.ObjectType = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
-                                               revitTunnelSectionFamilyInstance.Symbol.Name;
+                            b.ObjectType = revitTunnelSection.Symbol.FamilyName + ":" +
+                                               revitTunnelSection.Symbol.Name;
                             b.ObjectPlacement = model.Instances.New<IfcLocalPlacement>(p =>
                             {
-
-                                var objects = model.Instances.OfType<IfcBuildingStorey>();
-                                var tunnelStorey = objects.First();
+                                var tunnelStorey = model.Instances.OfType<IfcBuildingStorey>().First();
 
                                 p.PlacementRelTo = tunnelStorey.ObjectPlacement;
                                 p.RelativePlacement = model.Instances.New<IfcAxis2Placement3D>(t =>
@@ -394,92 +382,44 @@ namespace TransITGeometryTransferRevit.Commands
 
                                     t.Location = model.Instances.New<IfcCartesianPoint>(cp =>
                                     {
-                                        //var loc = revitTunnelSectionFamilyInstance.Location as LocationPoint;
-
-                                        //cp.X = loc.Point.X;
-                                        //cp.Y = loc.Point.Y;
-                                        //cp.Z = loc.Point.Z;
-
-                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
+                                        var originPoint = tunnelFamilyDocument.GetElement(placementPointIds[0]) as ReferencePoint;
 
                                         cp.X = originPoint.Position.X * Constants.FeetToMillimeter;
                                         cp.Y = originPoint.Position.Y * Constants.FeetToMillimeter;
                                         cp.Z = originPoint.Position.Z * Constants.FeetToMillimeter;
-
-                                        //cp.X = 0;
-                                        //cp.Y = 0;
-                                        //cp.Z = 0;
-
-                                        //cp.X = 975585;
-                                        //cp.Y = 56777;
-                                        //cp.Z = 353345;
-
                                     });
 
                                     t.Axis = model.Instances.New<IfcDirection>(d =>
                                     {
-                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
-                                        var upPoint = tunnelFamilyDocument.GetElement(placePointIds[2]) as ReferencePoint;
-
-                                        var upDir = upPoint.Position - originPoint.Position;
-
-
-                                        //d.X = upDir.X;
-                                        //d.Y = upDir.Y;
-                                        //d.Z = upDir.Z;
-
                                         d.X = 0;
                                         d.Y = 0;
                                         d.Z = 1;
-
                                     });
 
                                     t.RefDirection = model.Instances.New<IfcDirection>(d =>
                                     {
-                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
-                                        var endPoint = tunnelFamilyDocument.GetElement(placePointIds[1]) as ReferencePoint;
-
-                                        var forwardDir = endPoint.Position - originPoint.Position;
-
-
-                                        //d.X = forwardDir.X;
-                                        //d.Y = forwardDir.Y;
-                                        //d.Z = forwardDir.Z;
-
                                         d.X = 1;
                                         d.Y = 0;
                                         d.Z = 0;
-
                                     });
-
-
                                 });
                             });
 
 
-
-
-
-
-
-                            var p0 = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
-                            var p1 = tunnelFamilyDocument.GetElement(placePointIds[1]) as ReferencePoint;
+                            var p0 = tunnelFamilyDocument.GetElement(placementPointIds[0]) as ReferencePoint;
+                            var p1 = tunnelFamilyDocument.GetElement(placementPointIds[1]) as ReferencePoint;
 
                             var xyz0 = new XYZ(0, 0, 0);
-                            //var xyz0 = p0.Position;
                             var xyz1 = p1.Position - p0.Position;
-                            //var xyz1 = new XYZ((p1.Position - p0.Position).GetLength(),0,0);
-                            //var xyz1 = p1.Position;
-
 
                             var revitTunnelSectionLine = Line.CreateBound(xyz0, xyz1);
                             var revitTunnelSectionLineCurveArray = new CurveArray();
                             revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
+
                             var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
 
                             var revitTunnelParts = new List<FamilyInstance>();
-
 
                             FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(tunnelFamilyDocument);
                             collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
