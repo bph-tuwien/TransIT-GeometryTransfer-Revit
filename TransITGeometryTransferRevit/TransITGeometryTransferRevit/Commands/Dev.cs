@@ -128,6 +128,13 @@ namespace TransITGeometryTransferRevit.Commands
             File.Replace(ifcExportTempPath, ifcExportPath, null);
         }
 
+        /// <summary>
+        /// Generic function to find elements by type and name.
+        /// </summary>
+        /// <typeparam name="T">The type on the elements to find</typeparam>
+        /// <param name="doc">The Revit document to search in</param>
+        /// <param name="startsWith">String to filter elements by String.StartsWith. Leave it empty for no filtering</param>
+        /// <returns></returns>
         public T[] GetElements<T>(Document doc, string startsWith) where T : class
         {
             FilteredElementCollector collector = new FilteredElementCollector(doc);
@@ -146,9 +153,14 @@ namespace TransITGeometryTransferRevit.Commands
             return result.ToArray();
         }
 
-        public void AddTunnelLineAsAxisRepresentation(Document doc, string ifcExportPath)
+        /// <summary>
+        /// Adding Tunnel Line as Axis representation to the Tunnel.
+        /// </summary>
+        /// <param name="doc">The Revit document that contains the Tunnel as a FamilyInstance</param>
+        /// <param name="ifcFilePath">The IFC file's filepath to do the addition in</param>
+        public void AddTunnelLineAsAxisRepresentation(Document doc, string ifcFilePath)
         {
-            using (var model = IfcStore.Open(ifcExportPath))
+            using (var model = IfcStore.Open(ifcFilePath))
             {
 
                 using (var ifcTransaction = model.BeginTransaction(
@@ -160,19 +172,12 @@ namespace TransITGeometryTransferRevit.Commands
                     var docfamily = doc.EditFamily(fam);
                     var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
 
-
                     DirectShape tunnelLineShape = GetElements<DirectShape>(docfamily, "TunnelLine").First();
                     GeometryElement tunnelLineGeometry = tunnelLineShape.get_Geometry(new Options());
 
-
-                    var objects = model.Instances.OfType<IfcBuildingStorey>();
-                    var tunnelStorey = objects.First();
-
                     var ifcIndexedPolyCurve = tunnelLineGeometry.ToIfcIndexedPolyCurve(false, model, tunnelFamilyInstanceTotalTransform, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
-
-                    var objects2 = model.Instances.OfType<IfcBuilding>();
-                    var tunnelBuilding = objects2.First();
+                    var tunnelBuilding = model.Instances.OfType<IfcBuilding>().First();
 
                     tunnelBuilding.Representation = model.Instances.New<IfcProductDefinitionShape>(def =>
                     {
@@ -188,13 +193,9 @@ namespace TransITGeometryTransferRevit.Commands
                     });
 
 
-
-
-                    ;
-
                     ifcTransaction.Commit();
                 }
-                model.SaveAs(ifcExportPath);
+                model.SaveAs(ifcFilePath);
             }
         }
 
