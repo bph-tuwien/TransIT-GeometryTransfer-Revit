@@ -342,62 +342,17 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
-
-        /// <summary>
-        /// Dev command class
-        /// </summary>
-        /// <param name="commandData"></param>
-        /// <param name="message"></param>
-        /// <param name="elements"></param>
-        /// <returns></returns>
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public void RecreatingTunnelSectionsInIFC(string ifcFilePath, Document tunnelFamilyDocument)
         {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
-            Document doc = uidoc.Document;
-
-
-            FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
-            var fam = tunnelFamilyInstance.Symbol.Family;
-            var docfamily = doc.EditFamily(fam);
-
-            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
-
-
-
-            // TODO: Make this a user prompt
-            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
-            var ifcExportPathFilename = "TunnelExportRevit.ifc";
-            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
-            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
-            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
-            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
-
-
-            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
-            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
-            AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
-            DeleteTunnelSections(ifcExportPath);
-
-            // ##############
-            // LOADING BACK IFC MODEL
-            // ###############
-
-
-            using (var model = IfcStore.Open(ifcExportPath))
+            using (var model = IfcStore.Open(ifcFilePath))
             {
-
-
-
-
                 // #############################
                 // RECREATING TUNNEL SECTIONS
                 // #############################
                 using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
                 {
 
-                    var revitTunnelSections = GetElements<FamilyInstance>(docfamily, "TunnelSection");
+                    var revitTunnelSections = GetElements<FamilyInstance>(tunnelFamilyDocument, "TunnelSection");
 
                     var ifcBuildingElementProxies = new List<IfcBuildingElementProxy>();
 
@@ -422,11 +377,11 @@ namespace TransITGeometryTransferRevit.Commands
                             //b.GlobalId = "TESTtestTESTtestTESTte";
                             //b.OwnerHistory = 
                             b.Name = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
-                                     revitTunnelSectionFamilyInstance.Symbol.Name + ":" +
-                                     sectionIDParam.AsInteger();
+                                         revitTunnelSectionFamilyInstance.Symbol.Name + ":" +
+                                         sectionIDParam.AsInteger();
                             //b.Description = 
                             b.ObjectType = revitTunnelSectionFamilyInstance.Symbol.FamilyName + ":" +
-                                           revitTunnelSectionFamilyInstance.Symbol.Name;
+                                               revitTunnelSectionFamilyInstance.Symbol.Name;
                             b.ObjectPlacement = model.Instances.New<IfcLocalPlacement>(p =>
                             {
 
@@ -445,7 +400,7 @@ namespace TransITGeometryTransferRevit.Commands
                                         //cp.Y = loc.Point.Y;
                                         //cp.Z = loc.Point.Z;
 
-                                        var originPoint = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
+                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
 
                                         cp.X = originPoint.Position.X * Constants.FeetToMillimeter;
                                         cp.Y = originPoint.Position.Y * Constants.FeetToMillimeter;
@@ -463,8 +418,8 @@ namespace TransITGeometryTransferRevit.Commands
 
                                     t.Axis = model.Instances.New<IfcDirection>(d =>
                                     {
-                                        var originPoint = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
-                                        var upPoint = docfamily.GetElement(placePointIds[2]) as ReferencePoint;
+                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
+                                        var upPoint = tunnelFamilyDocument.GetElement(placePointIds[2]) as ReferencePoint;
 
                                         var upDir = upPoint.Position - originPoint.Position;
 
@@ -481,8 +436,8 @@ namespace TransITGeometryTransferRevit.Commands
 
                                     t.RefDirection = model.Instances.New<IfcDirection>(d =>
                                     {
-                                        var originPoint = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
-                                        var endPoint = docfamily.GetElement(placePointIds[1]) as ReferencePoint;
+                                        var originPoint = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
+                                        var endPoint = tunnelFamilyDocument.GetElement(placePointIds[1]) as ReferencePoint;
 
                                         var forwardDir = endPoint.Position - originPoint.Position;
 
@@ -507,8 +462,8 @@ namespace TransITGeometryTransferRevit.Commands
 
 
 
-                            var p0 = docfamily.GetElement(placePointIds[0]) as ReferencePoint;
-                            var p1 = docfamily.GetElement(placePointIds[1]) as ReferencePoint;
+                            var p0 = tunnelFamilyDocument.GetElement(placePointIds[0]) as ReferencePoint;
+                            var p1 = tunnelFamilyDocument.GetElement(placePointIds[1]) as ReferencePoint;
 
                             var xyz0 = new XYZ(0, 0, 0);
                             //var xyz0 = p0.Position;
@@ -526,7 +481,7 @@ namespace TransITGeometryTransferRevit.Commands
                             var revitTunnelParts = new List<FamilyInstance>();
 
 
-                            FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(docfamily);
+                            FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(tunnelFamilyDocument);
                             collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
 
                             foreach (FamilyInstance revitTunnelPart in collectorRevitTunnelPart)
@@ -551,7 +506,7 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                                     var revitTunnelProfileFamily = revitTunnelParts[0].Symbol.Family;
-                                    var revitTunnelProfileDocument = docfamily.EditFamily(revitTunnelProfileFamily);
+                                    var revitTunnelProfileDocument = tunnelFamilyDocument.EditFamily(revitTunnelProfileFamily);
 
                                     FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(revitTunnelProfileDocument);
                                     collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
@@ -590,13 +545,13 @@ namespace TransITGeometryTransferRevit.Commands
                                     ));
                                     //s.CrossSections.Add(s.CrossSections[0]);
                                     s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
-                                {
-                                    p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
-                                    p.ProfileName = "TestCustomProfile2";
-                                    p.OuterCurve = profileIfcIndexedPolyCurve2;
+                                        {
+                                            p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
+                                            p.ProfileName = "TestCustomProfile2";
+                                            p.OuterCurve = profileIfcIndexedPolyCurve2;
 
-                                }
-                                    ));
+                                        }
+                                        ));
 
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
@@ -660,6 +615,62 @@ namespace TransITGeometryTransferRevit.Commands
                     ifcTransaction.Commit();
 
                 }
+
+                model.SaveAs(ifcFilePath);
+            }
+        }
+
+
+        /// <summary>
+        /// Dev command class
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="message"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+
+            FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
+            var fam = tunnelFamilyInstance.Symbol.Family;
+            var tunnelFamilyDocument = doc.EditFamily(fam);
+
+            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
+
+
+
+            // TODO: Make this a user prompt
+            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
+            var ifcExportPathFilename = "TunnelExportRevit.ifc";
+            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
+            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
+            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
+
+
+            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
+            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
+            AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
+            DeleteTunnelSections(ifcExportPath);
+            RecreatingTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
+
+            // ##############
+            // LOADING BACK IFC MODEL
+            // ###############
+
+
+            using (var model = IfcStore.Open(ifcExportPath))
+            {
+
+
+
+
+
 
 
 
