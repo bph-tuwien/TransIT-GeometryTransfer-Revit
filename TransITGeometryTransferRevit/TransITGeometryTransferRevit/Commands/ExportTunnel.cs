@@ -765,15 +765,12 @@ namespace TransITGeometryTransferRevit.Commands
             var fam = tunnelFamilyInstance.Symbol.Family;
             var tunnelFamilyDocument = doc.EditFamily(fam);
 
-            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
 
+            var ifcExportFullPath = UserInteractions.PromptIfcFileSaveDialog();
 
-            // TODO: Make this a user prompt
-            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
-            var ifcExportPathFilename = "TunnelExportRevit.ifc";
-            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+            var ifcExportPathFolder = Path.GetDirectoryName(ifcExportFullPath);
+            var ifcExportPathFilename = Path.GetFileName(ifcExportFullPath);
             var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
-            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
             var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
 
 
