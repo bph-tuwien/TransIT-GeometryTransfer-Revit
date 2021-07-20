@@ -37,23 +37,11 @@ namespace TransITGeometryTransferRevit.Commands
     public class Dev : IExternalCommand
     {
 
-        public static IfcGeometricRepresentationContext GetAnnotationRepresentationContext(IfcStore model)
-        {
-            var objects = model.Instances.OfType<IfcGeometricRepresentationSubContext>();
-
-            foreach (IfcGeometricRepresentationSubContext rep in objects)
-            {
-                if (rep.ContextIdentifier != null && rep.ContextIdentifier.Value == "Annotation")
-                {
-                    return rep;
-                }
-            }
-
-            var annotationRep = IfcGeometricRepresentationContextExtension.MakeSimple(model, "Annotation");
-
-            return annotationRep;
-        }
-
+        /// <summary>
+        /// Returns the Model IfcGeometricRepresentationContext from the IFC Model.
+        /// </summary>
+        /// <param name="model">The Ifc model to look for the Model representation context in</param>
+        /// <returns> Model IfcGeometricRepresentationContext</returns>
         public static IfcGeometricRepresentationContext GetModelRepresentationContext(IfcStore model)
         {
             foreach (IfcGeometricRepresentationContext rep in model.Instances.OfType<IfcGeometricRepresentationContext>())
