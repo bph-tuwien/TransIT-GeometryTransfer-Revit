@@ -344,6 +344,39 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
+        /// <summary>
+        /// Converts a Revit Profile Family to IfcIndexedPolyCurve.
+        /// </summary>
+        /// <param name="tunnelProfileDocument">The Revit family document containing the Tunnel profile</param>
+        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
+        /// <returns>The Profile as IfcIndexedPolyCurve</returns>
+        public IfcIndexedPolyCurve RevitProfileDocumentToIfcIndexedPolyCurve(Document tunnelProfileDocument, IfcStore model)
+        {
+
+            FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(tunnelProfileDocument);
+            collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
+
+            CurveArray profileCurveArray = new CurveArray();
+
+            foreach (ModelArc modelArc in collectorRevitTunnelProfile)
+            {
+                var geometryArc = modelArc.GeometryCurve;
+                if (geometryArc is Curve curve)
+                {
+                    profileCurveArray.Append(curve);
+                }
+
+            }
+
+            return profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity,
+                                                           Constants.FeetToMillimeter);
+        }
+
+        /// <summary>
+        /// Recreating Tunnel Sections based on Revit FamilyInstances.
+        /// </summary>
+        /// <param name="ifcFilePath">The IFC file's filepath to do the addition in</param>
+        /// <param name="tunnelFamilyDocument">Tunnel Family Document containing the tunnel</param>
         public void RecreatingTunnelSectionsInIFC(string ifcFilePath, Document tunnelFamilyDocument)
         {
             using (var model = IfcStore.Open(ifcFilePath))
@@ -405,7 +438,6 @@ namespace TransITGeometryTransferRevit.Commands
                                 });
                             });
 
-
                             var p0 = tunnelFamilyDocument.GetElement(placementPointIds[0]) as ReferencePoint;
                             var p1 = tunnelFamilyDocument.GetElement(placementPointIds[1]) as ReferencePoint;
 
@@ -416,24 +448,25 @@ namespace TransITGeometryTransferRevit.Commands
                             var revitTunnelSectionLineCurveArray = new CurveArray();
                             revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
 
-                            var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
+                            var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, 
+                                        model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
 
                             var revitTunnelParts = new List<FamilyInstance>();
 
-                            FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(tunnelFamilyDocument);
-                            collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
 
-                            foreach (FamilyInstance revitTunnelPart in collectorRevitTunnelPart)
+                            var revitTunnelProfiles = GetElements<FamilyInstance>(tunnelFamilyDocument, "");
+
+
+                            foreach (FamilyInstance revitTunnelProfile in revitTunnelProfiles)
                             {
 
-                                if (revitTunnelPart.SuperComponent != null && revitTunnelSection.Id.ToString() == revitTunnelPart.SuperComponent.Id.ToString())
+                                if (revitTunnelProfile.SuperComponent != null &&
+                                    revitTunnelSection.Id.ToString() == revitTunnelProfile.SuperComponent.Id.ToString())
                                 {
-                                    revitTunnelParts.Add(revitTunnelPart);
+                                    revitTunnelParts.Add(revitTunnelProfile);
                                 }
                             }
-
-
 
 
                             b.Representation = model.Instances.New<IfcProductDefinitionShape>(def =>
@@ -442,57 +475,30 @@ namespace TransITGeometryTransferRevit.Commands
                                 var sweep = model.Instances.New<IfcSectionedSolidHorizontal>(s =>
                                 {
                                     s.Directrix = ifcTunnelSectionLine;
-                                    // TODO: temp cross sections
 
+                                    var revitTunnelProfileFamily1 = revitTunnelParts[0].Symbol.Family;
+                                    var revitTunnelProfileDocument1 = tunnelFamilyDocument.EditFamily(revitTunnelProfileFamily1);
+                                    var profileIfcIndexedPolyCurve1 = RevitProfileDocumentToIfcIndexedPolyCurve(revitTunnelProfileDocument1, model);
 
-                                    var revitTunnelProfileFamily = revitTunnelParts[0].Symbol.Family;
-                                    var revitTunnelProfileDocument = tunnelFamilyDocument.EditFamily(revitTunnelProfileFamily);
+                                    var revitTunnelProfileFamily2 = revitTunnelParts[1].Symbol.Family;
+                                    var revitTunnelProfileDocument2 = tunnelFamilyDocument.EditFamily(revitTunnelProfileFamily2);
+                                    var profileIfcIndexedPolyCurve2 = RevitProfileDocumentToIfcIndexedPolyCurve(revitTunnelProfileDocument2, model);
 
-                                    FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(revitTunnelProfileDocument);
-                                    collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
-
-                                    CurveArray profileCurveArray = new CurveArray();
-
-                                    foreach (ModelArc modelArc in collectorRevitTunnelProfile)
-                                    {
-                                        var geometryArc = modelArc.GeometryCurve;
-                                        if (geometryArc is Curve curve)
-                                        {
-                                            profileCurveArray.Append(curve);
-                                        }
-
-                                    }
-
-                                    var profileIfcIndexedPolyCurve1 = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
-
-
-                                    var transform1 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(0, 1, 0), new XYZ(0, 0, 0)));
-                                    var transform2 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(1, 0, 0), new XYZ(0, 0, 0)));
-                                    var transform3 = Transform.CreateReflection(Plane.CreateByNormalAndOrigin(new XYZ(0, 0, 1), new XYZ(0, 0, 0)));
-                                    var transform = transform2;
-                                    //var transform = Transform.Identity;
-
-                                    var profileIfcIndexedPolyCurve2 = profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
-
-                                    ;
 
                                     s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
                                     {
                                         p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
-                                        p.ProfileName = "TestCustomProfile1";
+                                        p.ProfileName = "Profile1";
                                         p.OuterCurve = profileIfcIndexedPolyCurve1;
                                     }
                                     ));
-                                    //s.CrossSections.Add(s.CrossSections[0]);
                                     s.CrossSections.Add(model.Instances.New<IfcArbitraryClosedProfileDef>(p =>
-                                        {
-                                            p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
-                                            p.ProfileName = "TestCustomProfile2";
-                                            p.OuterCurve = profileIfcIndexedPolyCurve2;
-
-                                        }
-                                        ));
-
+                                    {
+                                        p.ProfileType = Xbim.Ifc4.Interfaces.IfcProfileTypeEnum.AREA;
+                                        p.ProfileName = "Profile2";
+                                        p.OuterCurve = profileIfcIndexedPolyCurve2;
+                                    }
+                                    ));
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
                                         d.DistanceAlong = 0;
@@ -510,13 +516,12 @@ namespace TransITGeometryTransferRevit.Commands
                                         var coordList = pointList.CoordList;
                                         var x0 = new XYZ(coordList[0][0], coordList[0][1], coordList[0][2]);
                                         var x1 = new XYZ(coordList[1][0], coordList[1][1], coordList[1][2]);
+                                        // Decrement the length of the tunnel by a small amount so the sweep shows up
+                                        // Could be a FZK Viewer specific issue and solution
                                         var length = (x1 - x0).GetLength() - 0.00000000001;
 
 
-                                        //d.DistanceAlong = ifcTunnelSectionLine.ToCurve().Length - 1;
                                         d.DistanceAlong = length;
-                                        //d.DistanceAlong = ifcTunnelSectionLine.;
-                                        //d.DistanceAlong = 50000;
                                         d.OffsetLateral = 0;
                                         d.OffsetVertical = 0;
                                         d.OffsetLongitudinal = 0;
@@ -540,16 +545,10 @@ namespace TransITGeometryTransferRevit.Commands
 
                             });
 
-
                             //b.Tag =
                             //b.PredefinedType = 
 
-
-
-
                         });
-
-
                     }
 
                     ifcTransaction.Commit();
