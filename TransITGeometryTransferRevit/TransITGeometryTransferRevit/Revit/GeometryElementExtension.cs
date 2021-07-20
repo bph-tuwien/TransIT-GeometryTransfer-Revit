@@ -1,20 +1,30 @@
-﻿using Autodesk.Revit.DB;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Xbim.Common.Geometry;
+
+using Autodesk.Revit.DB;
+
 using Xbim.Ifc;
 using Xbim.Ifc4.GeometricModelResource;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.MeasureResource;
+using Xbim.Common.Geometry;
+
 
 namespace TransITGeometryTransferRevit.Revit
 {
     public static class GeometryElementExtension
     {
-
+        /// <summary>
+        /// Converts a Revit CurveArray to an IfcIndexedPolyCurve and applies the given Revit, Ifc, and unit conversions.
+        /// </summary>
+        /// <param name="curveArray">The CurveArray to convert into an IfcIndexedPolyCurve</param>
+        /// <param name="closed">Whether to close the curve or not</param>
+        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
+        /// <param name="revitTransform">Revit transformation matrix</param>
+        /// <param name="ifcTransform">Ifc (Xbim) transformation matrix</param>
+        /// <param name="unitConversion">Unit conversion multiplier</param>
+        /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
         public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this CurveArray curveArray, bool closed, IfcStore model,
                                                                 Transform revitTransform, XbimMatrix3D ifcTransform, 
                                                                 double unitConversion)
@@ -29,17 +39,25 @@ namespace TransITGeometryTransferRevit.Revit
             var segments = segmentList.ToArray();
 
             return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
-
         }
 
-        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, IfcStore model,
-                                                                Transform revitTransform, XbimMatrix3D ifcTransform,
-                                                                double unitConversion)
+        /// <summary>
+        /// Converts a Revit GeometryElement to an IfcIndexedPolyCurve and applies the given Revit, Ifc, and unit conversions.
+        /// </summary>
+        /// <param name="geometryElement">The GeometryElement to convert into an IfcIndexedPolyCurve</param>
+        /// <param name="closed">Whether to close the curve or not</param>
+        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
+        /// <param name="revitTransform">Revit transformation matrix</param>
+        /// <param name="ifcTransform">Ifc (Xbim) transformation matrix</param>
+        /// <param name="unitConversion">Unit conversion multiplier</param>
+        /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
+        public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, 
+                                                                IfcStore model, Transform revitTransform,
+                                                                XbimMatrix3D ifcTransform,  double unitConversion)
         {
             var geometryObjectList = geometryElement.ToList();
 
             var segmentList = new List<Curve>();
-
 
             foreach (Curve curve in geometryObjectList)
             {
@@ -49,7 +67,6 @@ namespace TransITGeometryTransferRevit.Revit
             var segments = segmentList.ToArray();
 
             return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
-
         }
 
         private static List<double> FartherPoint(List<double> measuredFrom, List<double> p0, List<double> p1)
