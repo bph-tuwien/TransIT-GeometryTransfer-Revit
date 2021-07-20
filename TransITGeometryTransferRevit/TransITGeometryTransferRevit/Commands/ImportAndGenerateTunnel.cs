@@ -15,7 +15,7 @@ using Xbim.Ifc4.RepresentationResource;
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 
 
-namespace TransITGeometryTransferRevit
+namespace TransITGeometryTransferRevit.Commands
 {
 
     /// <summary>
@@ -23,8 +23,12 @@ namespace TransITGeometryTransferRevit
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Main : IExternalCommand
+    public class ImportAndGenerateTunnel : IExternalCommand
     {
+        /// <summary>
+        /// The length of the generated Tunnel Sections
+        /// </summary>
+        public const float TUNNEL_SECTION_LENGTH = 1.0f;
 
         /// <summary>
         /// Entry point of the family based tunnel import and generation plugin. 
@@ -114,6 +118,75 @@ namespace TransITGeometryTransferRevit
                 revitTransaction.Commit();
             }
 
+            // #########################################################
+            // IMPORTING TUNNEL LINE AND RECREATING IT AS A DIRECT SHAPE
+            // #########################################################
+
+            revitTransaction = new Transaction(doc);
+            {
+                revitTransaction.Start("Importing 3d tunnel");
+
+
+                using (var model = IfcStore.Open(ifcFileInfo.FullName))
+                {
+                    using (var ifcTransaction = model.BeginTransaction("Reading 3d tunnel to recreate in Revit"))
+                    {
+                        var ifcTunnel = TunnelCreator.GetTunnelIfcProduct(model);
+
+                        if (ifcTunnel == null)
+                        {
+                            throw new NullReferenceException("Could not found Tunnel IfcProduct in the model");
+                        }
+
+                        var representations = ifcTunnel.Representation.Representations;
+
+                        IfcRepresentation axisRepresentation = null;
+
+                        foreach (var representation in representations)
+                        {
+                            if (representation.RepresentationIdentifier == "Axis")
+                            {
+                                axisRepresentation = representation;
+                            }
+                        }
+
+                        if (axisRepresentation == null)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct has no Reference representation");
+                        }
+
+                        if (axisRepresentation.Items.Count == 0)
+                        {
+                            throw new NullReferenceException("Tunnel IfcProduct's Reference representation has no Items");
+                        }
+
+                        IfcIndexedPolyCurve ifcTunnelLine = axisRepresentation.Items[0] as IfcIndexedPolyCurve;
+
+                        Curve tempTunnelLine = ifcTunnelLine.ToCurve();
+                        var tunnelLine = ifcTunnelLine.ToCurveArray(Constants.MeterToFeet,
+                                                                -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
+
+                        WireframeBuilder builder = new WireframeBuilder();
+                        
+
+                        foreach (Curve curve in tunnelLine)
+                        {
+                            builder.AddCurve(curve);
+                        }
+
+                        ElementId categoryId = new ElementId(BuiltInCategory.OST_GenericModel);
+
+                        DirectShape ds = DirectShape.CreateElement(doc, categoryId);
+
+                        ds.SetShape(builder);
+
+                        ds.Name = "TunnelLine";
+                    }
+                }
+
+                revitTransaction.Commit();
+            }
+
 
             // ####################################################################
             // IMPORTING TUNNEL LINE AND CALCULATING EQUIDISTANT POINTS ON THE LINE
@@ -166,9 +239,9 @@ namespace TransITGeometryTransferRevit
                         revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
-                        // TODO: Change it to 1 meter
-                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 1.0 *
-                                                                                          Constants.MeterToFeet);
+                        // TODO: Use maybe arc.Evaluate() instead?
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 
+                                                                        TUNNEL_SECTION_LENGTH * Constants.MeterToFeet);
 
                     }
                 }
@@ -202,8 +275,11 @@ namespace TransITGeometryTransferRevit
                     var sectionPoints = new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] };
                     var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, sectionPoints);
 
-                    Parameter myparam = instance.LookupParameter("Profile");
-                    myparam.Set(tunnelProfileFamilySymbolId);
+                    Parameter profileParam = instance.LookupParameter("Profile");
+                    profileParam.Set(tunnelProfileFamilySymbolId);
+
+                    Parameter sectionIDParam = instance.LookupParameter("SectionID");
+                    sectionIDParam.Set(i-1);
 
                 }
 
