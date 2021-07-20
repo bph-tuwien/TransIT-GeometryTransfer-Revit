@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -9,26 +8,23 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.ApplicationServices;
 
 using Xbim.Ifc;
+using Xbim.Ifc.Extensions;
 using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Kernel;
 using Xbim.Ifc4.RepresentationResource;
-
-using TransITGeometryTransferRevit.Ifc.GeometryResource;
-using TransITGeometryTransferRevit.Revit;
-using TransITGeometryTransferRevit.Ifc;
 using Xbim.Ifc4.ProductExtension;
 using Xbim.Ifc4.GeometricModelResource;
 using Xbim.Ifc4.GeometricConstraintResource;
-using TransITGeometryTransferRevit.Ifc.RepresentationResource;
 using Xbim.Ifc4.SharedBldgElements;
-
-using Xbim.Geometry.Engine.Interop;
-using Xbim.Ifc.Extensions;
-using Xbim.Ifc4.MeasureResource;
-using Xbim.Common.Geometry;
 using Xbim.Ifc4.ProfileResource;
-using Xbim.Common;
 using Xbim.Ifc4.PresentationAppearanceResource;
+using Xbim.Common.Geometry;
+using Xbim.Common;
+
+using TransITGeometryTransferRevit.Ifc.RepresentationResource;
+using TransITGeometryTransferRevit.Ifc.GeometryResource;
+using TransITGeometryTransferRevit.Revit;
+
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -596,10 +592,10 @@ namespace TransITGeometryTransferRevit.Commands
                                 var ifcTransform = ifcTunnelSection.ObjectPlacement.ToMatrix3D();
                                 ifcTransform.Invert();
 
+                                // Finding the parts of the Tunnel Section
                                 foreach (FamilyInstance instance in allFamilyInstances)
                                 {
-                                    // Finding the parts of the Tunnel Section
-                                    if (instance.SuperComponent != null && 
+                                    if (instance.SuperComponent != null &&
                                         revitTunnelSection.Id.ToString() == instance.SuperComponent.Id.ToString())
                                     {
                                         var revitTunnelSectionProfile = instance;
@@ -652,95 +648,86 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
-
-        public void AddTunnelSectionLinesAsAxisRepresentation(Document doc, string ifcExportPath)
+        /// <summary>
+        /// Adds Tunnel Section Lines as Axis rpresentation to the Tunnel Sections.
+        /// </summary>
+        /// <param name="doc">The Revit Document containing the Tunnel FamilyInstance</param>
+        /// <param name="ifcFilePath">The IFC file's filepath to do the addition in</param>
+        public void AddTunnelSectionLinesAsAxisRepresentation(Document doc, string ifcFilePath)
         {
-            using (var model = IfcStore.Open(ifcExportPath))
+            using (var model = IfcStore.Open(ifcFilePath))
             {
+                var revitTunnelSections = GetElements<FamilyInstance>(doc, "TunnelSection");
 
 
-
-                // ##############
-                // ADDING PROFILES AS PROFILE REPRESENTATION
-                // ###############
-
+                using (var ifcTransaction = model.BeginTransaction(
+                                "TransITGeometryTransferRevit.Commands.Dev.AddTunnelSectionLinesAsAxisRepresentation"))
                 {
+                    var ifcTunnelSections = model.Instances.OfType<IfcBuildingElementProxy>();
 
 
-                    var queryRevitTunnelSection = GetElements<FamilyInstance>(doc, "TunnelSection");
-
-
-
-                    using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
+                    foreach (var revitTunnelSection in revitTunnelSections)
                     {
-                        var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
 
+                        var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
 
-                        foreach (var revitTunnelSection in queryRevitTunnelSection)
+                        foreach (var ifcTunnelSection in ifcTunnelSections)
                         {
 
-                            var revitTunnelSectionFamilyInstance = revitTunnelSection as FamilyInstance;
+                            // Matching Revit and IFC tunnel sections
+                            Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                            foreach (var ifcBuildingElementProxy in ifcBuildingElementProxies)
+                            if (ifcTunnelSection.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
                             {
 
-                                // Matching Revit and IFC tunnel sections
-                                Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                                if (ifcBuildingElementProxy.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
+                                var allFamilyInstances = GetElements<FamilyInstance>(doc, "");
+
+
+                                var revitTunnelSectionprofiles = new List<FamilyInstance>();
+
+                                var ifcTransform = ifcTunnelSection.ObjectPlacement.ToMatrix3D();
+                                ifcTransform.Invert();
+
+                                // Finding the parts of the Tunnel Section
+                                foreach (FamilyInstance instance in allFamilyInstances)
                                 {
-
-
-                                    var collectorRevitTunnelPart = GetElements<FamilyInstance>(doc, "");
-
-
-                                    var revitTunnelParts = new List<FamilyInstance>();
-
-                                    var ifcTransform = ifcBuildingElementProxy.ObjectPlacement.ToMatrix3D();
-                                    ifcTransform.Invert();
-
-                                    foreach (FamilyInstance revitTunnelPart in collectorRevitTunnelPart)
+                                    if (instance.SuperComponent != null &&
+                                        revitTunnelSection.Id.ToString() == instance.SuperComponent.Id.ToString())
                                     {
-                                        if (revitTunnelPart.SuperComponent != null && revitTunnelSection.Id.ToString() == revitTunnelPart.SuperComponent.Id.ToString())
-                                        {
-                                            revitTunnelParts.Add(revitTunnelPart);
+                                        revitTunnelSectionprofiles.Add(instance);
 
-                                        }
                                     }
-
-
-                                    var p0 = revitTunnelParts[0].Location as LocationPoint;
-                                    var p1 = revitTunnelParts[1].Location as LocationPoint;
-
-                                    var revitTunnelSectionLine = Line.CreateBound(p0.Point, p1.Point);
-                                    var revitTunnelSectionLineCurveArray = new CurveArray();
-                                    revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
-                                    var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
-
-                                    ifcBuildingElementProxy.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
-                                    {
-                                        rep.ContextOfItems = GetModelRepresentationContext(model);
-                                        rep.RepresentationIdentifier = "Axis";
-                                        rep.RepresentationType = "Curve3D";
-                                        rep.Items.Add(ifcTunnelSectionLine);
-                                    }
-                                    ));
-
                                 }
 
 
+                                var p0 = revitTunnelSectionprofiles[0].Location as LocationPoint;
+                                var p1 = revitTunnelSectionprofiles[1].Location as LocationPoint;
+
+                                var revitTunnelSectionLine = Line.CreateBound(p0.Point, p1.Point);
+                                var revitTunnelSectionLineCurveArray = new CurveArray();
+                                revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
+
+                                var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false,
+                                                    model, Transform.Identity, ifcTransform, Constants.FeetToMillimeter);
+
+                                ifcTunnelSection.Representation.Representations.Add(model.Instances.New<IfcShapeRepresentation>(rep =>
+                                {
+                                    rep.ContextOfItems = GetModelRepresentationContext(model);
+                                    rep.RepresentationIdentifier = "Axis";
+                                    rep.RepresentationType = "Curve3D";
+                                    rep.Items.Add(ifcTunnelSectionLine);
+                                }
+                                ));
+
                             }
-
                         }
-
-
-                        ifcTransaction.Commit();
                     }
 
+                    ifcTransaction.Commit();
                 }
 
-                model.SaveAs(ifcExportPath);
-
+                model.SaveAs(ifcFilePath);
             }
         }
 
@@ -767,7 +754,6 @@ namespace TransITGeometryTransferRevit.Commands
             var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
 
 
-
             // TODO: Make this a user prompt
             var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
             var ifcExportPathFilename = "TunnelExportRevit.ifc";
@@ -786,18 +772,7 @@ namespace TransITGeometryTransferRevit.Commands
             AddTunnelSectionLinesAsAxisRepresentation(doc, ifcExportPath);
 
 
-
-
-
-
-
-
-
-
-
             return Result.Succeeded;
-
         }
-
     }
 }
