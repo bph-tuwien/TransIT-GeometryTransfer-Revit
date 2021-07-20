@@ -25,6 +25,10 @@ namespace TransITGeometryTransferRevit.Commands
     [Regeneration(RegenerationOption.Manual)]
     public class ImportAndGenerateTunnel : IExternalCommand
     {
+        /// <summary>
+        /// The length of the generated Tunnel Sections
+        /// </summary>
+        public const float TUNNEL_SECTION_LENGTH = 1.0f;
 
         /// <summary>
         /// Entry point of the family based tunnel import and generation plugin. 
@@ -236,8 +240,8 @@ namespace TransITGeometryTransferRevit.Commands
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
                         // TODO: Change it to 1 meter
-                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 100.0 *
-                                                                                          Constants.MeterToFeet);
+                        pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 
+                                                                        TUNNEL_SECTION_LENGTH * Constants.MeterToFeet);
 
                     }
                 }
