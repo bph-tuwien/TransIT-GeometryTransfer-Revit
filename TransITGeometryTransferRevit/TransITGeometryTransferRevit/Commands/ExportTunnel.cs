@@ -185,7 +185,7 @@ namespace TransITGeometryTransferRevit.Commands
         /// Deleting Tunnel Section IfcBuildingElementProxies and their child entities
         /// </summary>
         /// <param name="ifcFilePath">The IFC file's filepath to do the removal in</param>
-        public void DeleteTunnelSections(string ifcFilePath)
+        public void DeleteTunnelSectionsInIFC(string ifcFilePath)
         {
             using (var model = IfcStore.Open(ifcFilePath))
             {
@@ -202,7 +202,7 @@ namespace TransITGeometryTransferRevit.Commands
                         entitiesToDelete.RemoveAt(0);
 
                         using (var ifcTransaction = model.BeginTransaction(
-                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSections"))
+                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSectionsInIFC"))
                         {
                             try
                             {
@@ -716,6 +716,33 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
+        public void AddTunnelSectionsToSpatialStructure(string ifcFilePath)
+        {
+            using (var model = IfcStore.Open(ifcFilePath))
+            {
+
+                using (var ifcTransaction = model.BeginTransaction(
+                               "TransITGeometryTransferRevit.Commands.Dev.AddTunnelSectionsToSpatialStructure"))
+                {
+
+                    var ifcTunnelSections = model.Instances.OfType<IfcBuildingElementProxy>();
+                    var ifcBuilding = model.Instances.OfType<IfcBuilding>().First();
+                    // TODO: Delete Storey
+                    var ifcStorey = model.Instances.OfType<IfcBuildingStorey>().First();
+
+                    model.Instances.New<IfcRelContainedInSpatialStructure>(rel =>
+                    {
+                        rel.RelatedElements.AddRange(ifcTunnelSections);
+                        rel.RelatingStructure = ifcBuilding;
+                    });
+
+
+                    ifcTransaction.Commit();
+                }
+
+                model.SaveAs(ifcFilePath);
+            }
+        }
 
         /// <summary>
         /// Dev command class
@@ -751,10 +778,11 @@ namespace TransITGeometryTransferRevit.Commands
             ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
             BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
             AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
-            DeleteTunnelSections(ifcExportPath);
+            DeleteTunnelSectionsInIFC(ifcExportPath);
             RecreateTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
             AddTunnelSectionProfilesAsProfileRepresentation(doc, ifcExportPath);
             AddTunnelSectionLinesAsAxisRepresentation(doc, ifcExportPath);
+            AddTunnelSectionsToSpatialStructure(ifcExportPath);
 
 
             return Result.Succeeded;
