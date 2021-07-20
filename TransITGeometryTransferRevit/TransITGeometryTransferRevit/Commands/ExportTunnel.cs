@@ -716,6 +716,10 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
+        /// <summary>
+        /// Adds Tunnel Sections to the existing IfcBuilding by a IfcRelContainedInSpatialStructure entity.
+        /// </summary>
+        /// <param name="ifcFilePath">The IFC file's filepath to do the modification in</param>
         public void AddTunnelSectionsToSpatialStructure(string ifcFilePath)
         {
             using (var model = IfcStore.Open(ifcFilePath))
@@ -726,14 +730,12 @@ namespace TransITGeometryTransferRevit.Commands
                 {
 
                     var ifcTunnelSections = model.Instances.OfType<IfcBuildingElementProxy>();
-                    var ifcBuilding = model.Instances.OfType<IfcBuilding>().First();
-                    // TODO: Delete Storey
-                    var ifcStorey = model.Instances.OfType<IfcBuildingStorey>().First();
+                    var ifcBuildingStorey = model.Instances.OfType<IfcBuildingStorey>().First();
 
                     model.Instances.New<IfcRelContainedInSpatialStructure>(rel =>
                     {
                         rel.RelatedElements.AddRange(ifcTunnelSections);
-                        rel.RelatingStructure = ifcBuilding;
+                        rel.RelatingStructure = ifcBuildingStorey;
                     });
 
 
