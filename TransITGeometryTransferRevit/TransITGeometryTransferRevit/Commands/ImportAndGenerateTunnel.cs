@@ -239,7 +239,7 @@ namespace TransITGeometryTransferRevit.Commands
                         revitTunnelLine = ifcTunnelLine.ToCurve(Constants.MeterToFeet,
                                                                 -tempTunnelLine.GetEndPoint(0) * Constants.MeterToFeet);
 
-                        // TODO: Change it to 1 meter
+                        // TODO: Use maybe arc.Evaluate() instead?
                         pointsOnTunnelLine = TunnelCreator.CreateEquiDistantPointsOnCurve(revitTunnelLine, 
                                                                         TUNNEL_SECTION_LENGTH * Constants.MeterToFeet);
 

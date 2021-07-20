@@ -13,8 +13,33 @@ using Xbim.Common.Geometry;
 
 namespace TransITGeometryTransferRevit.Revit
 {
-    public static class GeometryElementExtension
+    public static class GeometryExtension
     {
+        /// <summary>
+        /// Returns the point which is further from the measurement point. The given lists have to contain 3 components.
+        /// </summary>
+        /// <param name="measuredFrom">The point to calculate the distance from</param>
+        /// <param name="p0">One of the candidate for the further point</param>
+        /// <param name="p1">One of the candidate for the further point</param>
+        /// <returns>The point which is further from the measuredFrom point</returns>
+        private static List<double> FartherPoint(List<double> measuredFrom, List<double> p0, List<double> p1)
+        {
+            if (measuredFrom.Count != 3 || p0.Count != 3 || p1.Count != 3)
+            {
+                throw new ArgumentOutOfRangeException("The given coordinate does not contain exactly 3 components.");
+            }
+
+            var sd0 = Math.Pow(p0[0] - measuredFrom[0], 2) +
+                      Math.Pow(p0[1] - measuredFrom[1], 2) +
+                      Math.Pow(p0[2] - measuredFrom[2], 2);
+
+            var sd1 = Math.Pow(p1[0] - measuredFrom[0], 2) +
+                      Math.Pow(p1[1] - measuredFrom[1], 2) +
+                      Math.Pow(p1[2] - measuredFrom[2], 2);
+
+            return sd0 > sd1 ? p0 : p1;
+        }
+
         /// <summary>
         /// Converts a Revit CurveArray to an IfcIndexedPolyCurve and applies the given Revit, Ifc, and unit conversions.
         /// </summary>
@@ -69,20 +94,17 @@ namespace TransITGeometryTransferRevit.Revit
             return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
         }
 
-        private static List<double> FartherPoint(List<double> measuredFrom, List<double> p0, List<double> p1)
-        {
-            // TODO: Make it work for any dimensions
-            var sd0 = Math.Pow(p0[0] - measuredFrom[0], 2) +
-                      Math.Pow(p0[1] - measuredFrom[1], 2) +
-                      Math.Pow(p0[2] - measuredFrom[2], 2);
 
-            var sd1 = Math.Pow(p1[0] - measuredFrom[0], 2) +
-                      Math.Pow(p1[1] - measuredFrom[1], 2) +
-                      Math.Pow(p1[2] - measuredFrom[2], 2);
-
-            return sd0 > sd1 ? p0 : p1;
-        }
-
+        /// <summary>
+        /// Converts a Revit GeometryElement to an IfcIndexedPolyCurve and applies the given Revit, Ifc, and unit conversions.
+        /// </summary>
+        /// <param name="segments">The Curve array to convert into an IfcIndexedPolyCurve</param>
+        /// <param name="closed">Whether to close the curve or not</param>
+        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
+        /// <param name="revitTransform">Revit transformation matrix</param>
+        /// <param name="ifcTransform">Ifc (Xbim) transformation matrix</param>
+        /// <param name="unitConversion">Unit conversion multiplier</param>
+        /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
         private static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this Curve[] segments, bool closed, IfcStore model,
                                                                 Transform revitTransform, XbimMatrix3D ifcTransform,
                                                                 double unitConversion)
@@ -158,18 +180,6 @@ namespace TransITGeometryTransferRevit.Revit
                     var segmentIndices = new List<IfcPositiveInteger>();
                     segmentIndices.Add(points.Count);
 
-                    // TODO: Fix Arcs
-                    //if (segment is Arc arc2)
-                    //{
-                    //    var cadPoint = revitTransform.OfPoint(arc2.GetEndPoint(1)) * unitConversion;
-
-                    //    points.Add(new List<double>(){
-                    //        cadPoint.X,
-                    //        cadPoint.Y,
-                    //        cadPoint.Z
-                    //    });
-                    //}
-                    //else if (segment is Arc)
                     if (segment is Arc)
                     {
                         var arc = segment as Arc;
@@ -179,8 +189,6 @@ namespace TransITGeometryTransferRevit.Revit
 
 
                         var midPoint = arc.Evaluate(0.5f, true);
-                        //var midPoint = tessellatedArc[tessellatedArc.Count/2];
-                        //var midPoint = tessellatedArc[1];
 
                         var cadPoint = revitTransform.OfPoint(midPoint) * unitConversion;
                         var transMidPoint = cadPoint;
@@ -245,10 +253,6 @@ namespace TransITGeometryTransferRevit.Revit
                         coordinates.CoordList.GetAt(j).AddRange(new IfcLengthMeasure[] { transformedPoint.X,
                                                                                          transformedPoint.Y,
                                                                                          transformedPoint.Z});
-
-
-                        //var values = points[j].Select(v => new IfcLengthMeasure(v));
-                        //coordinates.CoordList.GetAt(j).AddRange(values);
                     };  
                 });
 
@@ -258,7 +262,6 @@ namespace TransITGeometryTransferRevit.Revit
                 {
                     if (segment.Count == 2)
                     {
-
                         if (closed && i == (indices.Count - 1))
                         {
                             segment.Add(1);
@@ -268,16 +271,12 @@ namespace TransITGeometryTransferRevit.Revit
                         {
                             ifcCurve.Segments.Add(new IfcLineIndex(segment));
                         }
-
                     }
 
                     else if (segment.Count == 3)
                     {
 
                         ifcCurve.Segments.Add(new IfcArcIndex(segment));
-                        //ifcCurve.Segments.Add(new IfcLineIndex(segment));
-
-
                     }
                     i++;
                 }
@@ -285,10 +284,6 @@ namespace TransITGeometryTransferRevit.Revit
             });
 
             return ifcIndexedPolyCurve;
-
-
         }
-
-
     }
 }
