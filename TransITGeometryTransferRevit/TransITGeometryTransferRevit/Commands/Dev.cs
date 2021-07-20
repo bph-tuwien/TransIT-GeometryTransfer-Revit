@@ -448,7 +448,7 @@ namespace TransITGeometryTransferRevit.Commands
                             var revitTunnelSectionLineCurveArray = new CurveArray();
                             revitTunnelSectionLineCurveArray.Append(revitTunnelSectionLine);
 
-                            var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false, 
+                            var ifcTunnelSectionLine = revitTunnelSectionLineCurveArray.ToIfcIndexedPolyCurve(false,
                                         model, Transform.Identity, XbimMatrix3D.Identity, Constants.FeetToMillimeter);
 
 
@@ -559,58 +559,10 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
-
-        /// <summary>
-        /// Dev command class
-        /// </summary>
-        /// <param name="commandData"></param>
-        /// <param name="message"></param>
-        /// <param name="elements"></param>
-        /// <returns></returns>
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public void AddTunnelSectionProfilesAsProfileRepresentation(Document doc, string ifcExportPath)
         {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
-            Document doc = uidoc.Document;
-
-
-            FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
-            var fam = tunnelFamilyInstance.Symbol.Family;
-            var tunnelFamilyDocument = doc.EditFamily(fam);
-
-            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
-
-
-
-            // TODO: Make this a user prompt
-            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
-            var ifcExportPathFilename = "TunnelExportRevit.ifc";
-            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
-            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
-            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
-            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
-
-
-            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
-            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
-            AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
-            DeleteTunnelSections(ifcExportPath);
-            RecreatingTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
-
-            // ##############
-            // LOADING BACK IFC MODEL
-            // ###############
-
-
             using (var model = IfcStore.Open(ifcExportPath))
             {
-
-
-
-
-
-
 
 
 
@@ -620,9 +572,9 @@ namespace TransITGeometryTransferRevit.Commands
 
                 {
 
-                    FilteredElementCollector collectorRevitTunnelSection = new FilteredElementCollector(doc);
-                    collectorRevitTunnelSection = collectorRevitTunnelSection.OfClass(typeof(FamilyInstance));
-                    var queryRevitTunnelSection = from element in collectorRevitTunnelSection where element.Name.StartsWith("TunnelSection") select element;
+
+                    var queryRevitTunnelSection = GetElements<FamilyInstance>(doc, "TunnelSection");
+
 
 
                     using (var ifcTransaction = model.BeginTransaction("TransITGeometryTransferRevit.Commands.Dev.Execute"))
@@ -644,8 +596,9 @@ namespace TransITGeometryTransferRevit.Commands
                                 if (ifcBuildingElementProxy.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
                                 {
 
-                                    FilteredElementCollector collectorRevitTunnelPart = new FilteredElementCollector(doc);
-                                    collectorRevitTunnelPart = collectorRevitTunnelPart.OfClass(typeof(FamilyInstance));
+
+                                    var collectorRevitTunnelPart = GetElements<FamilyInstance>(doc, "");
+
 
                                     var ifcTunnelSectionProfiles = new List<IfcIndexedPolyCurve>();
                                     var revitTunnelParts = new List<FamilyInstance>();
@@ -737,7 +690,7 @@ namespace TransITGeometryTransferRevit.Commands
                                     ));
 
 
-                                    
+
 
                                 }
 
@@ -760,11 +713,52 @@ namespace TransITGeometryTransferRevit.Commands
 
 
 
-                model.SaveAs(ifcPostExportPath);
+                model.SaveAs(ifcExportPath);
 
             }
+        }
 
 
+        /// <summary>
+        /// Dev command class
+        /// </summary>
+        /// <param name="commandData"></param>
+        /// <param name="message"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+
+            FamilyInstance tunnelFamilyInstance = GetElements<FamilyInstance>(doc, "TunnelFamily").First();
+            var fam = tunnelFamilyInstance.Symbol.Family;
+            var tunnelFamilyDocument = doc.EditFamily(fam);
+
+            var tunnelFamilyInstanceTotalTransform = tunnelFamilyInstance.GetTotalTransform();
+
+
+
+            // TODO: Make this a user prompt
+            var ifcExportPathFolder = "Y:/RevitTunnel/RevitExportTest";
+            var ifcExportPathFilename = "TunnelExportRevit.ifc";
+            var ifcPostExportPathFilename = "TunnelExportRevit_post.ifc";
+            var ifcExportPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename);
+            var ifcPostExportPath = Path.Combine(ifcExportPathFolder, ifcPostExportPathFilename);
+            var ifcExportTempPath = Path.Combine(ifcExportPathFolder, ifcExportPathFilename + "_temp");
+
+
+            ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
+            BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
+            AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
+            DeleteTunnelSections(ifcExportPath);
+            RecreatingTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
+            AddTunnelSectionProfilesAsProfileRepresentation(doc, ifcExportPath);
+
+            
 
 
 
