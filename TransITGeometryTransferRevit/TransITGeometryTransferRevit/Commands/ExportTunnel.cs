@@ -27,15 +27,13 @@ using TransITGeometryTransferRevit.Revit;
 
 namespace TransITGeometryTransferRevit.Commands
 {
-
     /// <summary>
     /// The class containing the callable Revit commands.
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Dev : IExternalCommand
+    public class ExportTunnel : IExternalCommand
     {
-
         /// <summary>
         /// Returns the Model IfcGeometricRepresentationContext from the IFC Model.
         /// </summary>
@@ -494,7 +492,7 @@ namespace TransITGeometryTransferRevit.Commands
 
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
-                                        // Calculating line lenght
+                                        // Calculating line length
                                         IfcCartesianPointList3D pointList = ifcTunnelSectionLine.Points as IfcCartesianPointList3D;
                                         var coordList = pointList.CoordList;
                                         var x0 = new XYZ(coordList[0][0], coordList[0][1], coordList[0][2]);

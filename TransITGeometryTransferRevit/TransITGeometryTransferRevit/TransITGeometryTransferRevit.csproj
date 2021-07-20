@@ -133,7 +133,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Commands\Dev.cs" />
+    <Compile Include="Commands\ExportTunnel.cs" />
     <Compile Include="FamilyUtils.cs" />
     <Compile Include="Ifc\GeometryResource\IfcIndexedPolyCurveExtension.cs" />
     <Compile Include="Commands\ImportAndGenerateTunnel.cs" />

@@ -12,9 +12,9 @@
     <VendorDescription>TODO</VendorDescription>
  </AddIn>
  <AddIn Type="Command">
-       <Name>Dev command</Name>
-       <FullClassName>TransITGeometryTransferRevit.Commands.Dev</FullClassName>
-       <Text>Dev command</Text>
+       <Name>Export Tunnel</Name>
+       <FullClassName>TransITGeometryTransferRevit.Commands.ExportTunnel</FullClassName>
+       <Text>Export Tunnel</Text>
        <Description>Development command for TransITGeometryTransferRevit</Description>
        <VisibilityMode>AlwaysVisible</VisibilityMode>
        <Assembly>Y:\TransIT-GeometryTransfer-Revit\TransITGeometryTransferRevit\TransITGeometryTransferRevit\bin\Debug\TransITGeometryTransferRevit.dll</Assembly>

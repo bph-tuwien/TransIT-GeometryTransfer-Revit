@@ -13,6 +13,9 @@ using Xbim.Common.Geometry;
 
 namespace TransITGeometryTransferRevit.Revit
 {
+    /// <summary>
+    /// Extension methods to convert various Revit curves to IfcIndexedPolyCurve.
+    /// </summary>
     public static class GeometryExtension
     {
         /// <summary>
