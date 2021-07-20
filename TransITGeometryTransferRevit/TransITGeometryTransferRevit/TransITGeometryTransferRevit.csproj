@@ -137,8 +137,6 @@
     <Compile Include="FamilyUtils.cs" />
     <Compile Include="Ifc\GeometryResource\IfcIndexedPolyCurveExtension.cs" />
     <Compile Include="Commands\ImportAndGenerateTunnel.cs" />
-    <Compile Include="Ifc\RepresentationResource\IfcGeometricRepresentationContextExtension.cs" />
-    <Compile Include="Ifc\RepresentationResource\IfcGeometricRepresentationSubContextExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Revit\GeometryElementExtension.cs" />
     <Compile Include="TemplateFamiliesBase64.cs" />

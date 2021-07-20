@@ -11,7 +11,6 @@ namespace TransITGeometryTransferRevit
     /// </summary>
     public class FamilyUtils
     {
-
         /// <summary>
         /// Loads the Revit Family if it's not loaded already.
         /// </summary>

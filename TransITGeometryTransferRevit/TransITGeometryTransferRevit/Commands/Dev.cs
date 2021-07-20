@@ -21,7 +21,6 @@ using Xbim.Ifc4.PresentationAppearanceResource;
 using Xbim.Common.Geometry;
 using Xbim.Common;
 
-using TransITGeometryTransferRevit.Ifc.RepresentationResource;
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 using TransITGeometryTransferRevit.Revit;
 
