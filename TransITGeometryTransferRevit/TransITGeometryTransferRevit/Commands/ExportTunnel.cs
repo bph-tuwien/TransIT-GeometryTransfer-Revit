@@ -18,12 +18,12 @@ using Xbim.Ifc4.GeometricConstraintResource;
 using Xbim.Ifc4.SharedBldgElements;
 using Xbim.Ifc4.ProfileResource;
 using Xbim.Ifc4.PresentationAppearanceResource;
+using Xbim.Ifc4.PresentationOrganizationResource;
 using Xbim.Common.Geometry;
 using Xbim.Common;
 
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 using TransITGeometryTransferRevit.Revit;
-
 
 namespace TransITGeometryTransferRevit.Commands
 {
@@ -314,6 +314,16 @@ namespace TransITGeometryTransferRevit.Commands
                 foreach (var rel in ifcRelDefinesByType)
                 {
                     if (rel.RelatedObjects.Count == 0)
+                    {
+                        entitiesToDelete.Add(rel);
+                    }
+                }
+
+                var ifcPresentationLayerAssignment = model.Instances.OfType<IfcPresentationLayerAssignment>();
+
+                foreach (var rel in ifcPresentationLayerAssignment)
+                {
+                    if (rel.AssignedItems.Count == 0)
                     {
                         entitiesToDelete.Add(rel);
                     }
