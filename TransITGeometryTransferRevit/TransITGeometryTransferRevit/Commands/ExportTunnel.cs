@@ -361,7 +361,7 @@ namespace TransITGeometryTransferRevit.Commands
             }
 
             return profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity,
-                                                           Constants.FeetToMillimeter);
+                                                           Constants.FeetToMillimeter, false);
         }
 
         /// <summary>
