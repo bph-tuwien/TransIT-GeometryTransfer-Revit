@@ -25,6 +25,7 @@ using Xbim.Common;
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 using TransITGeometryTransferRevit.Revit;
 
+
 namespace TransITGeometryTransferRevit.Commands
 {
     /// <summary>
@@ -493,9 +494,8 @@ namespace TransITGeometryTransferRevit.Commands
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
                                         d.DistanceAlong = 0;
-                                        d.OffsetLateral = 0;
-                                        d.OffsetVertical = 0;
-                                        d.OffsetLongitudinal = 0;
+                                        //d.OffsetLateral = 0;
+                                        //d.OffsetVertical = 0;
                                         d.AlongHorizontal = false;
                                     }
                                     ));
@@ -513,9 +513,8 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                                         d.DistanceAlong = length;
-                                        d.OffsetLateral = 0;
-                                        d.OffsetVertical = 0;
-                                        d.OffsetLongitudinal = 0;
+                                        //d.OffsetLateral = 0;
+                                        //d.OffsetVertical = 0;
                                         d.AlongHorizontal = false;
                                     }
                                     ));
