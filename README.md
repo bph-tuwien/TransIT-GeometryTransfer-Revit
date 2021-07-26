@@ -13,6 +13,13 @@ The following steps are required to use the plugin in Revit:
  5. The plugin can be executed under `Add-ins/External Tools/TransIT Geometry Transfer Revit`.
  6. When executed, the plugin asks for the exported tunnel IFC file. Test files can be found under the given release.
 
+ ## Known Issues
+
+ 1. The exported IFC file from Revit gives IfcShapeRepresentation.CorrectItemsForType schema violation in FZKViewer for
+ each tunnel section because of their Body representation. Currently the representation uses `AdvancedSweptSolid` which
+ should be the correct one based on the IFC documentation, however FZKViewer doesn't recognizes it. Other representation
+ types were tried for the `IfcSectionedSolidHorizontal` representation item, but that resulted incorrect shape
+ representation in FZKViewer.
 
  ## Documentation and Tutorials
 
