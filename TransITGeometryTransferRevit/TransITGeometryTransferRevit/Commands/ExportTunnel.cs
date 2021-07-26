@@ -19,6 +19,7 @@ using Xbim.Ifc4.SharedBldgElements;
 using Xbim.Ifc4.ProfileResource;
 using Xbim.Ifc4.PresentationAppearanceResource;
 using Xbim.Ifc4.PresentationOrganizationResource;
+using Xbim.Ifc4.UtilityResource;
 using Xbim.Common.Geometry;
 using Xbim.Common;
 
@@ -178,6 +179,9 @@ namespace TransITGeometryTransferRevit.Commands
 
                     ifcTransaction.Commit();
                 }
+
+                NameIfcApplicationAndOrganization(model, "AddTunnelLineAsAxisRepresentation");
+
                 model.SaveAs(ifcFilePath);
             }
         }
@@ -331,6 +335,8 @@ namespace TransITGeometryTransferRevit.Commands
                 }
 
                 DeleteEntities();
+
+                NameIfcApplicationAndOrganization(model, "DeleteTunnelSectionsInIFC");
 
                 model.SaveAs(ifcFilePath);
             }
@@ -545,6 +551,8 @@ namespace TransITGeometryTransferRevit.Commands
 
                 }
 
+                NameIfcApplicationAndOrganization(model, "RecreateTunnelSectionsInIFC");
+
                 model.SaveAs(ifcFilePath);
             }
         }
@@ -753,7 +761,40 @@ namespace TransITGeometryTransferRevit.Commands
                     ifcTransaction.Commit();
                 }
 
+                NameIfcApplicationAndOrganization(model, "AddTunnelSectionsToSpatialStructure");
+
                 model.SaveAs(ifcFilePath);
+            }
+        }
+
+        /// <summary>
+        /// Naming Unspecified IfcApplication and IfcOrganization entities based on the given export stage string.
+        /// </summary>
+        /// <param name="model">The Ifc model to make the modifications in</param>
+        /// <param name="exportStage">Name of the last export stage</param>
+        public void NameIfcApplicationAndOrganization(IfcStore model, string exportStage)
+        {
+            using (var ifcTransaction = model.BeginTransaction(
+                           "TransITGeometryTransferRevit.Commands.Dev.NameIfcApplicationAndOrganization"))
+            {
+
+                var ifcApplications = model.Instances.OfType<IfcApplication>();
+
+                foreach (var ifcApplication in ifcApplications)
+                {
+                    if (ifcApplication.ApplicationFullName != "Unspecified")
+                    {
+                        continue;
+                    }
+
+                    ifcApplication.ApplicationDeveloper.Name = $"TransIT-GeometryTransfer-Revit {exportStage}";
+                    ifcApplication.Version = "1.1.0";
+                    ifcApplication.ApplicationFullName = $"TransIT-GeometryTransfer-Revit {exportStage}";
+                    ifcApplication.ApplicationIdentifier = $"TransIT {exportStage}";
+                }
+
+
+                ifcTransaction.Commit();
             }
         }
 
