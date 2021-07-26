@@ -576,7 +576,9 @@ namespace TransITGeometryTransferRevit.Commands
                             // Matching Revit and IFC tunnel sections
                             Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                            if (ifcTunnelSection.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
+                            var ifcTunnelSectionID = ifcTunnelSection.Name.ToString().Split(':')[2];
+
+                            if (ifcTunnelSectionID == sectionIDParam.AsInteger().ToString())
                             {
 
                                 var allFamilyInstances = GetElements<FamilyInstance>(doc, "");
@@ -671,10 +673,10 @@ namespace TransITGeometryTransferRevit.Commands
                             // Matching Revit and IFC tunnel sections
                             Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                            if (ifcTunnelSection.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
+                            var ifcTunnelSectionID = ifcTunnelSection.Name.ToString().Split(':')[2];
+
+                            if (ifcTunnelSectionID == sectionIDParam.AsInteger().ToString())
                             {
-
-
                                 var allFamilyInstances = GetElements<FamilyInstance>(doc, "");
 
 
