@@ -189,71 +189,6 @@ namespace TransITGeometryTransferRevit.Commands
         }
 
         /// <summary>
-        /// Removes leftover entities like IfcIndexedColourMaps and broken IfcPresentationLayerAssignments.
-        /// </summary>
-        /// <param name="ifcFilePath">The IFC file's filepath to do the removal in</param>
-        public void DeleteLeftOverEntities(string ifcFilePath)
-        {
-            using (var model = IfcStore.Open(ifcFilePath))
-            {
-                var ifcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
-                List<IPersistEntity> entitiesToDelete = new List<IPersistEntity>();
-
-
-                // Local function to delete entities from the entitiesToDelete List
-                void DeleteEntities()
-                {
-                    while (entitiesToDelete.Count > 0)
-                    {
-                        var entity = entitiesToDelete.First();
-                        entitiesToDelete.RemoveAt(0);
-
-                        using (var ifcTransaction = model.BeginTransaction(
-                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSectionsInIFC"))
-                        {
-                            try
-                            {
-                                entity.Model.Delete(entity);
-                            }
-                            catch (System.Exception e)
-                            {
-                                // Hide exceptions about already deleted entities
-                            }
-                            ifcTransaction.Commit();
-                        }
-                    }
-                }
-
-
-                var ifcIndexedColourMaps = model.Instances.OfType<IfcIndexedColourMap>();
-
-                foreach (var colourMap in ifcIndexedColourMaps)
-                {
-                    if (colourMap.MappedTo == null)
-                    {
-                        entitiesToDelete.Add(colourMap);
-                    }
-                }
-
-                var ifcPresentationLayerAssignment = model.Instances.OfType<IfcPresentationLayerAssignment>();
-
-                foreach (var rel in ifcPresentationLayerAssignment)
-                {
-                    if (rel.AssignedItems.Count == 0)
-                    {
-                        entitiesToDelete.Add(rel);
-                    }
-                }
-
-                DeleteEntities();
-
-                NameIfcApplicationAndOrganization(model, "DeleteTunnelSectionsInIFC");
-
-                model.SaveAs(ifcFilePath);
-            }
-        }
-
-        /// <summary>
         /// Converts a Revit Profile Family to IfcIndexedPolyCurve.
         /// </summary>
         /// <param name="tunnelProfileDocument">The Revit family document containing the Tunnel profile</param>
@@ -368,6 +303,16 @@ namespace TransITGeometryTransferRevit.Commands
                     if (colourMap.MappedTo == null)
                     {
                         entitiesToDelete.Add(colourMap);
+                    }
+                }
+
+                var ifcPresentationLayerAssignment = model.Instances.OfType<IfcPresentationLayerAssignment>();
+
+                foreach (var rel in ifcPresentationLayerAssignment)
+                {
+                    if (rel.AssignedItems.Count == 0)
+                    {
+                        entitiesToDelete.Add(rel);
                     }
                 }
 
@@ -845,7 +790,6 @@ namespace TransITGeometryTransferRevit.Commands
             AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
             DeleteTunnelSectionPartsInIFC(ifcExportPath);
             RecreateTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
-            DeleteLeftOverEntities(ifcExportPath);
             AddTunnelSectionProfilesAsProfileRepresentation(doc, ifcExportPath);
             AddTunnelSectionLinesAsAxisRepresentation(doc, ifcExportPath);
 
