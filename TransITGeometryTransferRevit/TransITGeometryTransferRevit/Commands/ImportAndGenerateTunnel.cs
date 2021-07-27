@@ -42,7 +42,7 @@ namespace TransITGeometryTransferRevit.Commands
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Application app = uiapp.Application;
-            Document doc = uidoc.Document;
+            Document projectDoc = uidoc.Document;
 
             string tunnelProfileFamilyPath = null;
 
@@ -50,6 +50,13 @@ namespace TransITGeometryTransferRevit.Commands
             var ifcFilePath = UserInteractions.PromptIfcFileOpenDialog();
             FileInfo ifcFileInfo = new FileInfo(ifcFilePath);
 
+
+            // ###############################
+            // CREATING TUNNEL FAMILY DOCUMENT
+            // ###############################
+
+            var tunnelFamilyPath = TunnelCreator.CreateTunnelFamily(commandData);
+            Document tunnelDoc = app.OpenDocumentFile(tunnelFamilyPath);
 
             // #################################################################################
             // CREATING TUNNEL PROFILE FAMILY BASED ON THE IFC TUNNEL'S REFERENCE REPRESENTATION
@@ -101,16 +108,16 @@ namespace TransITGeometryTransferRevit.Commands
 
             ElementId tunnelProfileFamilySymbolId = null;
 
-            var revitTransaction = new Transaction(doc, "Loading tunnel profile family");
+            var revitTransaction = new Transaction(tunnelDoc, "Loading tunnel profile family");
             {
                 revitTransaction.Start();
 
 
-                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelProfileFamilyPath, "TunnelProfile");
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(tunnelDoc, tunnelProfileFamilyPath, "TunnelProfile");
                 FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
 
                 if (!symbol.IsActive)
-                { symbol.Activate(); doc.Regenerate(); }
+                { symbol.Activate(); tunnelDoc.Regenerate(); }
 
                 tunnelProfileFamilySymbolId = symbol.Id;
 
@@ -122,7 +129,7 @@ namespace TransITGeometryTransferRevit.Commands
             // IMPORTING TUNNEL LINE AND RECREATING IT AS A DIRECT SHAPE
             // #########################################################
 
-            revitTransaction = new Transaction(doc);
+            revitTransaction = new Transaction(tunnelDoc);
             {
                 revitTransaction.Start("Importing 3d tunnel");
 
@@ -176,7 +183,7 @@ namespace TransITGeometryTransferRevit.Commands
 
                         ElementId categoryId = new ElementId(BuiltInCategory.OST_GenericModel);
 
-                        DirectShape ds = DirectShape.CreateElement(doc, categoryId);
+                        DirectShape ds = DirectShape.CreateElement(tunnelDoc, categoryId);
 
                         ds.SetShape(builder);
 
@@ -195,7 +202,7 @@ namespace TransITGeometryTransferRevit.Commands
             XYZ[] pointsOnTunnelLine = new XYZ[0];
             Curve revitTunnelLine = null;
 
-            revitTransaction = new Transaction(doc);
+            revitTransaction = new Transaction(tunnelDoc);
             {
                 revitTransaction.Start("Importing 3d tunnel");
 
@@ -254,26 +261,26 @@ namespace TransITGeometryTransferRevit.Commands
             // LOADING, INSTATIATING, AND SETTING TUNNEL SECTION FAMILY
             // ########################################################
 
-            revitTransaction = new Transaction(doc, "Inserting tunnel section family instance");
+            revitTransaction = new Transaction(tunnelDoc, "Inserting tunnel section family instance");
             {
                 revitTransaction.Start();
 
                 var tunnelSectionTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(
                                                             TemplateFamiliesBase64.tunnelSectionFamilyTemplateBase64);
 
-                Family family = FamilyUtils.LoadFamilyIfNotLoaded(doc, tunnelSectionTemplateFamilyPath,
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(tunnelDoc, tunnelSectionTemplateFamilyPath,
                                                                   "TunnelSectionFamily");
                 family.Name = "TunnelSectionFamily";
                 FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
                 symbol.Name = "TunnelSectionFamily";
 
                 if (!symbol.IsActive)
-                { symbol.Activate(); doc.Regenerate(); }
+                { symbol.Activate(); tunnelDoc.Regenerate(); }
 
                 for (int i = 1; i < pointsOnTunnelLine.Length; i++)
                 {
                     var sectionPoints = new XYZ[] { pointsOnTunnelLine[i - 1], pointsOnTunnelLine[i] };
-                    var instance = TunnelCreator.CreateTunnelSectionInstance(doc, symbol, sectionPoints);
+                    var instance = TunnelCreator.CreateTunnelSectionInstance(tunnelDoc, symbol, sectionPoints);
 
                     Parameter profileParam = instance.LookupParameter("Profile");
                     profileParam.Set(tunnelProfileFamilySymbolId);
@@ -282,6 +289,33 @@ namespace TransITGeometryTransferRevit.Commands
                     sectionIDParam.Set(i-1);
 
                 }
+
+                revitTransaction.Commit();
+            }
+
+            SaveAsOptions opt = new SaveAsOptions();
+            opt.OverwriteExistingFile = true;
+            tunnelDoc.SaveAs(tunnelFamilyPath, opt);
+            tunnelDoc.Close(false);
+
+            // #######################################
+            // LOADING AND INSTANTIATING TUNNEL FAMILY
+            // #######################################
+
+            revitTransaction = new Transaction(projectDoc, "Loading tunnel family");
+            {
+                revitTransaction.Start();
+
+
+                Family family = FamilyUtils.LoadFamilyIfNotLoaded(projectDoc, tunnelFamilyPath, "TunnelFamily");
+                FamilySymbol symbol = FamilyUtils.GetFirstFamilySymbol(family);
+
+                if (!symbol.IsActive)
+                { symbol.Activate(); projectDoc.Regenerate(); }
+
+                var tunnelInstance = projectDoc.Create.NewFamilyInstance(new XYZ(0, 0, 0), symbol,
+                                                        Autodesk.Revit.DB.Structure.StructuralType.UnknownFraming);
+
 
                 revitTransaction.Commit();
             }

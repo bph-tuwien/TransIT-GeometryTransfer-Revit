@@ -55,7 +55,7 @@ namespace TransITGeometryTransferRevit.Revit
         /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
         public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this CurveArray curveArray, bool closed, IfcStore model,
                                                                 Transform revitTransform, XbimMatrix3D ifcTransform, 
-                                                                double unitConversion)
+                                                                double unitConversion, bool is3D = true)
         {
             var segmentList = new List<Curve>();
 
@@ -66,7 +66,7 @@ namespace TransITGeometryTransferRevit.Revit
 
             var segments = segmentList.ToArray();
 
-            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
+            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion, is3D);
         }
 
         /// <summary>
@@ -81,7 +81,8 @@ namespace TransITGeometryTransferRevit.Revit
         /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
         public static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this GeometryElement geometryElement, bool closed, 
                                                                 IfcStore model, Transform revitTransform,
-                                                                XbimMatrix3D ifcTransform,  double unitConversion)
+                                                                XbimMatrix3D ifcTransform,  double unitConversion,
+                                                                bool is3D = true)
         {
             var geometryObjectList = geometryElement.ToList();
 
@@ -94,7 +95,7 @@ namespace TransITGeometryTransferRevit.Revit
 
             var segments = segmentList.ToArray();
 
-            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion);
+            return segments.ToIfcIndexedPolyCurve(closed, model, revitTransform, ifcTransform, unitConversion, is3D);
         }
 
 
@@ -110,7 +111,7 @@ namespace TransITGeometryTransferRevit.Revit
         /// <returns>An IfcIndexedPolycurve with the applied transformations and unit conversion</returns>
         private static IfcIndexedPolyCurve ToIfcIndexedPolyCurve(this Curve[] segments, bool closed, IfcStore model,
                                                                 Transform revitTransform, XbimMatrix3D ifcTransform,
-                                                                double unitConversion)
+                                                                double unitConversion, bool is3D = true)
         {
 
             var points = new List<List<double>>();
@@ -245,19 +246,36 @@ namespace TransITGeometryTransferRevit.Revit
 
                 }
 
-
-                ifcCurve.Points = model.Instances.New<IfcCartesianPointList3D>(coordinates =>
+                if (is3D)
                 {
-                    for (int j = 0; j < points.Count; j++)
+                    ifcCurve.Points = model.Instances.New<IfcCartesianPointList3D>(coordinates =>
                     {
-                        XbimPoint3D originalPoint = new XbimPoint3D(points[j][0], points[j][1], points[j][2]);
-                        var transformedPoint = ifcTransform.Transform(originalPoint);
+                        for (int j = 0; j < points.Count; j++)
+                        {
+                            XbimPoint3D originalPoint = new XbimPoint3D(points[j][0], points[j][1], points[j][2]);
+                            var transformedPoint = ifcTransform.Transform(originalPoint);
 
-                        coordinates.CoordList.GetAt(j).AddRange(new IfcLengthMeasure[] { transformedPoint.X,
+                            coordinates.CoordList.GetAt(j).AddRange(new IfcLengthMeasure[] { transformedPoint.X,
                                                                                          transformedPoint.Y,
                                                                                          transformedPoint.Z});
-                    };  
-                });
+                        };
+                    });
+                }
+                else
+                {
+                    ifcCurve.Points = model.Instances.New<IfcCartesianPointList2D>(coordinates =>
+                    {
+                        for (int j = 0; j < points.Count; j++)
+                        {
+                            XbimPoint3D originalPoint = new XbimPoint3D(points[j][0], points[j][1], points[j][2]);
+                            var transformedPoint = ifcTransform.Transform(originalPoint);
+
+                            coordinates.CoordList.GetAt(j).AddRange(new IfcLengthMeasure[] { transformedPoint.X,
+                                                                                         transformedPoint.Y});
+                        };
+                    });
+                }
+                
 
 
                 int i = 0;

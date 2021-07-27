@@ -23,6 +23,43 @@ namespace TransITGeometryTransferRevit
     public class TunnelCreator
     {
         /// <summary>
+        /// Creates an empty Metric Mass family for the Tunnel.
+        /// </summary>
+        /// <param name="commandData">ExternalCommandData of the Revit plugin execution</param>
+        /// <returns>The path to the generated empty Tunnel family</returns>
+        public static string CreateTunnelFamily(ExternalCommandData commandData)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
+
+            if (null == doc)
+            {
+                throw new ArgumentNullException("Current document is null");
+            }
+
+            var tunnelTemplateFamilyPath = TemplateFamiliesBase64.GetBase64FamilyPath(TemplateFamiliesBase64.tunnelFamilyTemplateBase64);
+
+            Document fdoc = app.OpenDocumentFile(tunnelTemplateFamilyPath);
+
+            if (null == fdoc)
+            {
+                throw new ArgumentNullException("Cannot open template family document");
+            }
+
+            string filename = Path.Combine(Path.GetTempPath(), "TunnelFamily.rfa");
+
+            SaveAsOptions opt = new SaveAsOptions();
+            opt.OverwriteExistingFile = true;
+            fdoc.SaveAs(filename, opt);
+            fdoc.Close(false);
+
+            return filename;
+        }
+
+        /// <summary>
         /// Creates a Generic Model family based on the given IfcRepresentationItem that represents the profile of the
         /// tunnel.
         /// </summary>

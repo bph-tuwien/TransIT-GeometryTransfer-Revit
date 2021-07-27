@@ -18,11 +18,15 @@ using Xbim.Ifc4.GeometricConstraintResource;
 using Xbim.Ifc4.SharedBldgElements;
 using Xbim.Ifc4.ProfileResource;
 using Xbim.Ifc4.PresentationAppearanceResource;
+using Xbim.Ifc4.PresentationOrganizationResource;
+using Xbim.Ifc4.UtilityResource;
+using Xbim.Ifc4.PropertyResource;
 using Xbim.Common.Geometry;
 using Xbim.Common;
 
 using TransITGeometryTransferRevit.Ifc.GeometryResource;
 using TransITGeometryTransferRevit.Revit;
+using TransITGeometryTransferRevit.Ifc;
 
 
 namespace TransITGeometryTransferRevit.Commands
@@ -177,15 +181,47 @@ namespace TransITGeometryTransferRevit.Commands
 
                     ifcTransaction.Commit();
                 }
+
+                NameIfcApplicationAndOrganization(model, "AddTunnelLineAsAxisRepresentation");
+
                 model.SaveAs(ifcFilePath);
             }
         }
 
         /// <summary>
-        /// Deleting Tunnel Section IfcBuildingElementProxies and their child entities
+        /// Converts a Revit Profile Family to IfcIndexedPolyCurve.
+        /// </summary>
+        /// <param name="tunnelProfileDocument">The Revit family document containing the Tunnel profile</param>
+        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
+        /// <returns>The Profile as IfcIndexedPolyCurve</returns>
+        public IfcIndexedPolyCurve RevitProfileDocumentToIfcIndexedPolyCurve(Document tunnelProfileDocument, IfcStore model)
+        {
+
+            FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(tunnelProfileDocument);
+            collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
+
+            CurveArray profileCurveArray = new CurveArray();
+
+            foreach (ModelArc modelArc in collectorRevitTunnelProfile)
+            {
+                var geometryArc = modelArc.GeometryCurve;
+                if (geometryArc is Curve curve)
+                {
+                    profileCurveArray.Append(curve);
+                }
+
+            }
+
+            return profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity,
+                                                           Constants.FeetToMillimeter, false);
+        }
+
+        /// <summary>
+        /// Deletes the Tunnel Section IfcBuildingElementProxies' child entities but not the IfcBuildingElementProxies
+        /// themselves.
         /// </summary>
         /// <param name="ifcFilePath">The IFC file's filepath to do the removal in</param>
-        public void DeleteTunnelSectionsInIFC(string ifcFilePath)
+        public void DeleteTunnelSectionPartsInIFC(string ifcFilePath)
         {
             using (var model = IfcStore.Open(ifcFilePath))
             {
@@ -202,7 +238,7 @@ namespace TransITGeometryTransferRevit.Commands
                         entitiesToDelete.RemoveAt(0);
 
                         using (var ifcTransaction = model.BeginTransaction(
-                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSectionsInIFC"))
+                                                    "TransITGeometryTransferRevit.Commands.Dev.DeleteTunnelSectionPartsInIFC"))
                         {
                             try
                             {
@@ -249,17 +285,8 @@ namespace TransITGeometryTransferRevit.Commands
                     entitiesToDelete.Add(tunnelSection.Representation.Representations[0].Items[0]);
                     entitiesToDelete.Add(tunnelSection.Representation.Representations[0]);
                     entitiesToDelete.Add(tunnelSection.Representation);
-                    entitiesToDelete.Add(tunnelSection);
+                    //entitiesToDelete.Add(tunnelSection);
 
-                    var propertySets = tunnelSection.PropertySets;
-
-                    foreach (var propertySet in propertySets)
-                    {
-                        entitiesToDelete.AddRange(propertySet.HasProperties);
-                        entitiesToDelete.AddRange(propertySet.DefinesOccurrence);
-                        entitiesToDelete.AddRange(propertySet.PropertySetDefinitions);
-                        entitiesToDelete.Add(propertySet);
-                    }
                 }
 
 
@@ -268,15 +295,6 @@ namespace TransITGeometryTransferRevit.Commands
                 // Second run of collecting entities to delete, but this time based on empty references. (this way it's
                 // easier to find entities that were part of the tunnel sections)
 
-                var ifcBuildingElementProxyTypes = model.Instances.OfType<IfcBuildingElementProxyType>();
-
-                foreach (var proxyType in ifcBuildingElementProxyTypes)
-                {
-                    if (proxyType.RepresentationMaps.Count == 0)
-                    {
-                        entitiesToDelete.Add(proxyType);
-                    }
-                }
 
                 var ifcIndexedColourMaps = model.Instances.OfType<IfcIndexedColourMap>();
 
@@ -288,69 +306,23 @@ namespace TransITGeometryTransferRevit.Commands
                     }
                 }
 
+                var ifcPresentationLayerAssignment = model.Instances.OfType<IfcPresentationLayerAssignment>();
 
-                var ifcPropertySets = model.Instances.OfType<IfcPropertySet>();
-
-                foreach (var propertySet in ifcPropertySets)
+                foreach (var rel in ifcPresentationLayerAssignment)
                 {
-                    if (propertySet.HasProperties.Count == 0)
-                    {
-                        entitiesToDelete.Add(propertySet);
-                    }
-                }
-
-                var ifcRelContainedInSpatialStructures = model.Instances.OfType<IfcRelContainedInSpatialStructure>();
-
-                foreach (var rel in ifcRelContainedInSpatialStructures)
-                {
-                    if (rel.RelatedElements.Count == 0)
+                    if (rel.AssignedItems.Count == 0)
                     {
                         entitiesToDelete.Add(rel);
                     }
                 }
 
-                var ifcRelDefinesByType = model.Instances.OfType<IfcRelDefinesByType>();
-
-                foreach (var rel in ifcRelDefinesByType)
-                {
-                    if (rel.RelatedObjects.Count == 0)
-                    {
-                        entitiesToDelete.Add(rel);
-                    }
-                }
 
                 DeleteEntities();
 
+                NameIfcApplicationAndOrganization(model, "DeleteTunnelSectionPartsInIFC");
+
                 model.SaveAs(ifcFilePath);
             }
-        }
-
-        /// <summary>
-        /// Converts a Revit Profile Family to IfcIndexedPolyCurve.
-        /// </summary>
-        /// <param name="tunnelProfileDocument">The Revit family document containing the Tunnel profile</param>
-        /// <param name="model">The Ifc model to create the IfcIndexedPolyCurve in</param>
-        /// <returns>The Profile as IfcIndexedPolyCurve</returns>
-        public IfcIndexedPolyCurve RevitProfileDocumentToIfcIndexedPolyCurve(Document tunnelProfileDocument, IfcStore model)
-        {
-
-            FilteredElementCollector collectorRevitTunnelProfile = new FilteredElementCollector(tunnelProfileDocument);
-            collectorRevitTunnelProfile = collectorRevitTunnelProfile.OfClass(typeof(CurveElement));
-
-            CurveArray profileCurveArray = new CurveArray();
-
-            foreach (ModelArc modelArc in collectorRevitTunnelProfile)
-            {
-                var geometryArc = modelArc.GeometryCurve;
-                if (geometryArc is Curve curve)
-                {
-                    profileCurveArray.Append(curve);
-                }
-
-            }
-
-            return profileCurveArray.ToIfcIndexedPolyCurve(true, model, Transform.Identity, XbimMatrix3D.Identity,
-                                                           Constants.FeetToMillimeter);
         }
 
         /// <summary>
@@ -367,6 +339,10 @@ namespace TransITGeometryTransferRevit.Commands
                 {
 
                     var revitTunnelSections = GetElements<FamilyInstance>(tunnelFamilyDocument, "TunnelSection");
+
+                    var oldIfcBuildingElementProxies = model.Instances.OfType<IfcBuildingElementProxy>();
+
+
                     var ifcBuildingElementProxies = new List<IfcBuildingElementProxy>();
 
 
@@ -374,16 +350,42 @@ namespace TransITGeometryTransferRevit.Commands
                     {
                         var placementPointIds = AdaptiveComponentInstanceUtils.GetInstancePlacementPointElementRefIds(revitTunnelSection);
 
+                        Parameter sectionIDParam = revitTunnelSection.LookupParameter("SectionID");
+
+
+                        // ##############################
+                        // Finding the old Tunnel Section
+                        // ##############################
+
+                        IfcBuildingElementProxy oldIfcBuildingElementProxy = null;
+
+                        foreach (var proxy in oldIfcBuildingElementProxies)
+                        {
+                            foreach (var propertySet in proxy.PropertySets)
+                            {
+                                if (propertySet.Name == "Data")
+                                {
+                                    foreach (var property in propertySet.HasProperties)
+                                    {
+                                        if (property.Name == "SectionID" && (property as IfcPropertySingleValue).NominalValue.ToString() == sectionIDParam.AsInteger().ToString())
+                                        {
+                                            oldIfcBuildingElementProxy = proxy;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
                         var buildingElementProxy = model.Instances.New<IfcBuildingElementProxy>(b =>
                         {
-                            Parameter sectionIDParam = revitTunnelSection.LookupParameter("SectionID");
-
-                            //b.GlobalId = 
+                            
+                            b.GlobalId = oldIfcBuildingElementProxy.GlobalId;
                             //b.OwnerHistory = 
                             b.Name = revitTunnelSection.Symbol.FamilyName + ":" +
                                          revitTunnelSection.Symbol.Name + ":" +
                                          sectionIDParam.AsInteger();
-                            //b.Description = 
+                            b.Description = oldIfcBuildingElementProxy.Description;
                             b.ObjectType = revitTunnelSection.Symbol.FamilyName + ":" +
                                                revitTunnelSection.Symbol.Name;
                             b.ObjectPlacement = model.Instances.New<IfcLocalPlacement>(p =>
@@ -483,9 +485,8 @@ namespace TransITGeometryTransferRevit.Commands
                                     s.CrossSectionPositions.Add(model.Instances.New<IfcDistanceExpression>(d =>
                                     {
                                         d.DistanceAlong = 0;
-                                        d.OffsetLateral = 0;
-                                        d.OffsetVertical = 0;
-                                        d.OffsetLongitudinal = 0;
+                                        //d.OffsetLateral = 0;
+                                        //d.OffsetVertical = 0;
                                         d.AlongHorizontal = false;
                                     }
                                     ));
@@ -503,9 +504,8 @@ namespace TransITGeometryTransferRevit.Commands
 
 
                                         d.DistanceAlong = length;
-                                        d.OffsetLateral = 0;
-                                        d.OffsetVertical = 0;
-                                        d.OffsetLongitudinal = 0;
+                                        //d.OffsetLateral = 0;
+                                        //d.OffsetVertical = 0;
                                         d.AlongHorizontal = false;
                                     }
                                     ));
@@ -526,15 +526,22 @@ namespace TransITGeometryTransferRevit.Commands
 
                             });
 
-                            //b.Tag =
-                            //b.PredefinedType = 
+                            b.Tag = oldIfcBuildingElementProxy.Tag;
+                            b.PredefinedType = oldIfcBuildingElementProxy.PredefinedType;
 
                         });
+
+                        ReferenceUtils.RedirectAllReferenesInModel(model, oldIfcBuildingElementProxy, buildingElementProxy);
+                        oldIfcBuildingElementProxy.Model.Delete(oldIfcBuildingElementProxy);
+
+
                     }
 
                     ifcTransaction.Commit();
 
                 }
+
+                NameIfcApplicationAndOrganization(model, "RecreateTunnelSectionsInIFC");
 
                 model.SaveAs(ifcFilePath);
             }
@@ -567,7 +574,9 @@ namespace TransITGeometryTransferRevit.Commands
                             // Matching Revit and IFC tunnel sections
                             Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                            if (ifcTunnelSection.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
+                            var ifcTunnelSectionID = ifcTunnelSection.Name.ToString().Split(':')[2];
+
+                            if (ifcTunnelSectionID == sectionIDParam.AsInteger().ToString())
                             {
 
                                 var allFamilyInstances = GetElements<FamilyInstance>(doc, "");
@@ -662,10 +671,10 @@ namespace TransITGeometryTransferRevit.Commands
                             // Matching Revit and IFC tunnel sections
                             Parameter sectionIDParam = revitTunnelSectionFamilyInstance.LookupParameter("SectionID");
 
-                            if (ifcTunnelSection.Name.ToString().EndsWith(sectionIDParam.AsInteger().ToString()))
+                            var ifcTunnelSectionID = ifcTunnelSection.Name.ToString().Split(':')[2];
+
+                            if (ifcTunnelSectionID == sectionIDParam.AsInteger().ToString())
                             {
-
-
                                 var allFamilyInstances = GetElements<FamilyInstance>(doc, "");
 
 
@@ -716,33 +725,35 @@ namespace TransITGeometryTransferRevit.Commands
             }
         }
 
+
         /// <summary>
-        /// Adds Tunnel Sections to the existing IfcBuilding by a IfcRelContainedInSpatialStructure entity.
+        /// Naming Unspecified IfcApplication and IfcOrganization entities based on the given export stage string.
         /// </summary>
-        /// <param name="ifcFilePath">The IFC file's filepath to do the modification in</param>
-        public void AddTunnelSectionsToSpatialStructure(string ifcFilePath)
+        /// <param name="model">The Ifc model to make the modifications in</param>
+        /// <param name="exportStage">Name of the last export stage</param>
+        public void NameIfcApplicationAndOrganization(IfcStore model, string exportStage)
         {
-            using (var model = IfcStore.Open(ifcFilePath))
+            using (var ifcTransaction = model.BeginTransaction(
+                           "TransITGeometryTransferRevit.Commands.Dev.NameIfcApplicationAndOrganization"))
             {
 
-                using (var ifcTransaction = model.BeginTransaction(
-                               "TransITGeometryTransferRevit.Commands.Dev.AddTunnelSectionsToSpatialStructure"))
+                var ifcApplications = model.Instances.OfType<IfcApplication>();
+
+                foreach (var ifcApplication in ifcApplications)
                 {
-
-                    var ifcTunnelSections = model.Instances.OfType<IfcBuildingElementProxy>();
-                    var ifcBuildingStorey = model.Instances.OfType<IfcBuildingStorey>().First();
-
-                    model.Instances.New<IfcRelContainedInSpatialStructure>(rel =>
+                    if (ifcApplication.ApplicationFullName != "Unspecified")
                     {
-                        rel.RelatedElements.AddRange(ifcTunnelSections);
-                        rel.RelatingStructure = ifcBuildingStorey;
-                    });
+                        continue;
+                    }
 
-
-                    ifcTransaction.Commit();
+                    ifcApplication.ApplicationDeveloper.Name = $"TransIT-GeometryTransfer-Revit {exportStage}";
+                    ifcApplication.Version = "1.1.0";
+                    ifcApplication.ApplicationFullName = $"TransIT-GeometryTransfer-Revit {exportStage}";
+                    ifcApplication.ApplicationIdentifier = $"TransIT {exportStage}";
                 }
 
-                model.SaveAs(ifcFilePath);
+
+                ifcTransaction.Commit();
             }
         }
 
@@ -777,11 +788,10 @@ namespace TransITGeometryTransferRevit.Commands
             ExportDocumentToIfc(doc, ifcExportPathFolder, ifcExportPathFilename);
             BumpIFCVersionTo4X1(ifcExportPath, ifcExportTempPath);
             AddTunnelLineAsAxisRepresentation(doc, ifcExportPath);
-            DeleteTunnelSectionsInIFC(ifcExportPath);
+            DeleteTunnelSectionPartsInIFC(ifcExportPath);
             RecreateTunnelSectionsInIFC(ifcExportPath, tunnelFamilyDocument);
             AddTunnelSectionProfilesAsProfileRepresentation(doc, ifcExportPath);
             AddTunnelSectionLinesAsAxisRepresentation(doc, ifcExportPath);
-            AddTunnelSectionsToSpatialStructure(ifcExportPath);
 
 
             return Result.Succeeded;
