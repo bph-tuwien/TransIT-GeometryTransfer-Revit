@@ -20,7 +20,7 @@ The following steps are required to use the plugin in Revit:
  should be the correct one based on the IFC documentation, however FZKViewer doesn't recognizes it. Other representation
  types were tried for the `IfcSectionedSolidHorizontal` representation item, but those resulted in incorrect shape
  representations in FZKViewer. 
- See RepresentationType in the IfcShapeRepresentation's [documentation](https://standards.buildingsmart.org/IFC/DEV/IFC4_3/RC1/HTML/schema/ifcrepresentationresource/lexical/ifcshaperepresentation.htm).
+ See RepresentationType in the IfcShapeRepresentation's [documentation](https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/lexical/IfcShapeRepresentation.htm).
 
 ## Documentation and Tutorials
 
