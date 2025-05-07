@@ -18,7 +18,7 @@ jobs:
       with:
         args: TransITGeometryTransferRevit/TransITGeometryTransferRevit/docfx.json -t statictoc
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: api-documentation-${{ github.sha }}
         path: TransITGeometryTransferRevit/TransITGeometryTransferRevit/_site
